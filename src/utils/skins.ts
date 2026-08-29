@@ -62,6 +62,10 @@ const imgCloud = new URL("../assets/skins/whale-cloud.webp", import.meta.url).hr
 const imgMaid = new URL("../assets/skins/whale-maid.webp", import.meta.url).href;
 const imgMaidNight = new URL("../assets/skins/whale-maid-night.webp", import.meta.url).href;
 const imgAds = new URL("../assets/skins/whale-ads.webp", import.meta.url).href;
+// 本地原神角色皮肤素材（打包进应用，与鲸鱼娘同款内嵌样式）
+const imgFurina = new URL("../assets/skins/genshin-furina.png", import.meta.url).href;
+const imgCitlali = new URL("../assets/skins/genshin-citlali.png", import.meta.url).href;
+const imgKeqing = new URL("../assets/skins/genshin-keqing.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -177,7 +181,127 @@ const whaleAds: SkinDefinition = {
   },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds];
+/** 芙宁娜·深蓝咏叹风格 —— 源自 Genshen-Furina-Skin：海蓝/陶瓷白，暗色为深海军蓝 */
+const furinaSkin: SkinDefinition = {
+  id: "genshin-furina",
+  name: "芙宁娜 · 深蓝咏叹",
+  source: "https://github.com/WPH666-py/Genshen-Furina-Skin",
+  builtin: true,
+  description: "海蓝咏叹：潮汐瓷白与深蓝底色，暗色为深海军蓝",
+  palettes: {
+    light: {
+      bg: "#f4f9fc", bgText: "#16344a",
+      sidebarBg: "#e3f2f9", sidebarText: "#2a6b8f", sidebarHover: "#d3e9f4", sidebarSelected: "#bfe0f0", sidebarHeader: "#6d94a8",
+      editorBg: "#f4f9fc",
+      tabsBg: "#e9f2f7", tabBg: "#e3f2f9", tabText: "#4a6b80", tabActiveBg: "#f4f9fc", tabActiveText: "#16344a",
+      aiBg: "#eef6fa", aiText: "#16344a", aiTabText: "#5c7f95",
+      userBubbleBg: "#cce8f5", userBubbleText: "#16344a",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#16344a", aiBubbleBorder: "#bfe0f0",
+      systemBubbleBg: "#fff7e8", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#16344a", inputBorder: "#9fd2e8",
+      accent: "#3d9dc9", accentText: "#ffffff",
+      border: "#cfe5f0",
+      chipBg: "#d7ecf7", chipText: "#2a6b8f", chipBorder: "#9fd2e8",
+    },
+    dark: {
+      bg: "#10243a", bgText: "#dcecf5",
+      sidebarBg: "#0c1c2e", sidebarText: "#7fb4cc", sidebarHover: "#16344f", sidebarSelected: "#235a7c", sidebarHeader: "#5c7f95",
+      editorBg: "#10243a",
+      tabsBg: "#0c1c2e", tabBg: "#10243a", tabText: "#7f95a0", tabActiveBg: "#16344f", tabActiveText: "#dcecf5",
+      aiBg: "#0c1c2e", aiText: "#dcecf5", aiTabText: "#7f95a0",
+      userBubbleBg: "#235a7c", userBubbleText: "#eaf5fb",
+      aiBubbleBg: "#16344f", aiBubbleText: "#dcecf5", aiBubbleBorder: "#235a7c",
+      systemBubbleBg: "#3a3220", systemBubbleText: "#e8d9a0",
+      inputBg: "#16344f", inputText: "#dcecf5", inputBorder: "#235a7c",
+      accent: "#62b8e8", accentText: "#0c1c2e",
+      border: "#235a7c",
+      chipBg: "#1c4966", chipText: "#bcdff0", chipBorder: "#3d7fa5",
+    },
+  },
+  mascot: { light: imgFurina, dark: imgFurina },
+};
+
+/** 茜特拉莉·紫粉星夜风格 —— 源自 Genshen-Citlali-Skin：紫粉/星夜深紫，暗色为夜紫 */
+const citlaliSkin: SkinDefinition = {
+  id: "genshin-citlali",
+  name: "茜特拉莉 · 紫粉星夜",
+  source: "https://github.com/WPH666-py/Genshen-Citlali-Skin",
+  builtin: true,
+  description: "紫粉星夜：薰衣草淡紫与星辉粉，暗色为夜之紫",
+  palettes: {
+    light: {
+      bg: "#fbf5ff", bgText: "#2a1b4a",
+      sidebarBg: "#f1e9fc", sidebarText: "#53387f", sidebarHover: "#e9ddfa", sidebarSelected: "#ddc8f5", sidebarHeader: "#8a7ba6",
+      editorBg: "#fbf5ff",
+      tabsBg: "#f3ecfe", tabBg: "#f1e9fc", tabText: "#6f5b8f", tabActiveBg: "#fbf5ff", tabActiveText: "#2a1b4a",
+      aiBg: "#f6efff", aiText: "#2a1b4a", aiTabText: "#84719f",
+      userBubbleBg: "#e4d4fa", userBubbleText: "#2a1b4a",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#2a1b4a", aiBubbleBorder: "#ddc8f5",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#2a1b4a", inputBorder: "#c9aef0",
+      accent: "#a855f7", accentText: "#ffffff",
+      border: "#e6d9f8",
+      chipBg: "#f0e4ff", chipText: "#53387f", chipBorder: "#c9aef0",
+    },
+    dark: {
+      bg: "#160b2e", bgText: "#f0dcff",
+      sidebarBg: "#100821", sidebarText: "#b58fe0", sidebarHover: "#241245", sidebarSelected: "#3b1d6b", sidebarHeader: "#84719f",
+      editorBg: "#160b2e",
+      tabsBg: "#100821", tabBg: "#160b2e", tabText: "#9d8ab8", tabActiveBg: "#241245", tabActiveText: "#f0dcff",
+      aiBg: "#100821", aiText: "#f0dcff", aiTabText: "#9d8ab8",
+      userBubbleBg: "#3b1d6b", userBubbleText: "#f0dcff",
+      aiBubbleBg: "#241245", aiBubbleText: "#f0dcff", aiBubbleBorder: "#55319a",
+      systemBubbleBg: "#3a3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#241245", inputText: "#f0dcff", inputBorder: "#55319a",
+      accent: "#f0abfc", accentText: "#160b2e",
+      border: "#3b1d6b",
+      chipBg: "#2e1657", chipText: "#d8bbf5", chipBorder: "#55319a",
+    },
+  },
+  mascot: { light: imgCitlali, dark: imgCitlali },
+};
+
+/** 刻晴·紫电雷鸣风格 —— 源自 Genshen-Keqing-Skin：电紫/云白，暗色为雷夜紫 */
+const keqingSkin: SkinDefinition = {
+  id: "genshin-keqing",
+  name: "刻晴 · 紫电雷鸣",
+  source: "https://github.com/WPH666-py/Genshen-Keqing-Skin",
+  builtin: true,
+  description: "紫电雷鸣：雷光浅紫与云白，暗色为雷夜深紫",
+  palettes: {
+    light: {
+      bg: "#f7f5fc", bgText: "#231a3d",
+      sidebarBg: "#eee9f8", sidebarText: "#4f3f7d", sidebarHover: "#e3dbf4", sidebarSelected: "#d3c5ee", sidebarHeader: "#8a83a4",
+      editorBg: "#f7f5fc",
+      tabsBg: "#f0ecf9", tabBg: "#eee9f8", tabText: "#6b6290", tabActiveBg: "#f7f5fc", tabActiveText: "#231a3d",
+      aiBg: "#f4f1fb", aiText: "#231a3d", aiTabText: "#7f76a2",
+      userBubbleBg: "#e0d5f5", userBubbleText: "#231a3d",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#231a3d", aiBubbleBorder: "#d3c5ee",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#231a3d", inputBorder: "#c1b2e8",
+      accent: "#8b5cf6", accentText: "#ffffff",
+      border: "#e0d8f2",
+      chipBg: "#ece4fb", chipText: "#4f3f7d", chipBorder: "#c1b2e8",
+    },
+    dark: {
+      bg: "#141020", bgText: "#e8e2f8",
+      sidebarBg: "#0f0b1c", sidebarText: "#ab9cd8", sidebarHover: "#221a40", sidebarSelected: "#372a63", sidebarHeader: "#7f76a2",
+      editorBg: "#141020",
+      tabsBg: "#0f0b1c", tabBg: "#141020", tabText: "#8f86b0", tabActiveBg: "#221a40", tabActiveText: "#e8e2f8",
+      aiBg: "#0f0b1c", aiText: "#e8e2f8", aiTabText: "#8f86b0",
+      userBubbleBg: "#372a63", userBubbleText: "#e8e2f8",
+      aiBubbleBg: "#221a40", aiBubbleText: "#e8e2f8", aiBubbleBorder: "#4d3d8a",
+      systemBubbleBg: "#3a3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#221a40", inputText: "#e8e2f8", inputBorder: "#4d3d8a",
+      accent: "#a78bfa", accentText: "#0f0b1c",
+      border: "#372a63",
+      chipBg: "#2b2050", chipText: "#cdbdf5", chipBorder: "#6152a8",
+    },
+  },
+  mascot: { light: imgKeqing, dark: imgKeqing },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
