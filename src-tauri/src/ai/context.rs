@@ -1,5 +1,18 @@
 use serde::{Deserialize, Serialize};
 
+/// 按字符数安全截断（避免在 UTF-8 多字节字符中间切分导致 panic）
+fn truncate_chars(s: &str, max_chars: usize) -> String {
+    let mut out = String::new();
+    for (i, ch) in s.chars().enumerate() {
+        if i >= max_chars {
+            out.push_str("...");
+            return out;
+        }
+        out.push(ch);
+    }
+    out
+}
+
 /// ─── 上下文压缩 ───
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,11 +143,7 @@ impl ContextCompressor {
         let mut summary = String::from("Key points from earlier conversation:\n");
 
         for (i, msg) in messages.iter().enumerate() {
-            let preview = if msg.content.len() > 200 {
-                format!("{}...", &msg.content[..200])
-            } else {
-                msg.content.clone()
-            };
+            let preview = truncate_chars(&msg.content, 200);
             let tag = match msg.role.as_str() {
                 "user" => "User asked",
                 "assistant" => "AI responded",

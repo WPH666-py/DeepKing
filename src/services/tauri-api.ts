@@ -1,13 +1,23 @@
 import { invoke } from "@tauri-apps/api/core";
 
 // ─── Types ───
-export interface Message { role: string; content: string; type?: string; }
+export interface Message { id?: string; role: string; content: string; type?: string; }
 export interface AIResponse {
   message: Message;
   usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
   mode: string;
 }
 export interface AgentResponse { message: Message; usage: AIResponse["usage"]; agent: string; mode: string; }
+export interface AgentLoopResult {
+  content: string;
+  total_iterations: number;
+  total_tool_calls: number;
+  mode: string;
+  event_count: number;
+  run_id: string;
+  context_tokens: number;
+  compressed: boolean;
+}
 export interface ModeInfo { id: string; name: string; desc: string; provider: string; emulated_model: string; coding_style: string; review_rigor: string; architecture_first: boolean; best_for: string[]; system_prompt_preview: string; }
 export interface AgentDef { name: string; description: string; system_prompt: string; allowed_tools: string[]; }
 export interface FileEntry { name: string; path: string; is_dir: boolean; size: number; children?: FileEntry[]; }
@@ -57,10 +67,14 @@ export const tauriAPI = {
 
   // ─── Agent Loop with Tools（Claude Code / Cursor 风格）───
   sendAIMessageWithTools: (mode: string, message: string, history: Message[], contextPaths: string[], workingDir?: string) =>
-    invoke<{content:string;total_iterations:number;total_tool_calls:number;mode:string;event_count:number}>(
+    invoke<AgentLoopResult>(
       "send_ai_message_with_tools",
       { mode, message, history, contextPaths, workingDir: workingDir || null }
     ),
+  // 查询某次 Agent 运行可撤销的文件变更数量（撤回对话）
+  getRunUndoCount: (runId: string) => invoke<number>("get_run_undo_count", { runId }),
+  // 撤销某次 Agent 运行的文件变更
+  undoRunChanges: (runId: string) => invoke<string[]>("undo_run_changes", { runId }),
   // 订阅 agent 事件
   onAgentEvent: async (handler: (event: any) => void) => {
     const { listen } = await import("@tauri-apps/api/event");

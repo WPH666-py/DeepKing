@@ -1,12 +1,25 @@
 use tauri::{State, Emitter};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::ai::{
     run_agent_loop, AgentEvent, AgentLoopInput, AgentLoopOutput,
     ContextCompressor, CompressedMessage, ContextFile,
     DeepSeekClient, Message, PersonaLoader, PromptAssembler, TaskType,
+    UndoStore, apply_undo,
 };
+
+/// 生成一次 Agent 运行的唯一 ID（时间戳 + 进程内自增 + 长度，避免依赖第三方随机库）
+static RUN_COUNTER: AtomicU64 = AtomicU64::new(0);
+fn new_run_id() -> String {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let c = RUN_COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!("run_{}_{}_{}", nanos, std::process::id(), c)
+}
 
 /// ─── AI IPC 命令 ───
 
@@ -45,6 +58,7 @@ pub fn switch_ai_mode(
         &[],
     );
 
+    let preview: String = assembled.chars().take(500).collect();
     Ok(serde_json::json!({
         "mode": mode,
         "name": persona_ctx.persona.meta.name,
@@ -54,7 +68,7 @@ pub fn switch_ai_mode(
         "review_rigor": persona_ctx.persona.characteristics.review_rigor,
         "architecture_first": persona_ctx.persona.characteristics.architecture_first,
         "best_for": persona_ctx.persona.tags.best_for,
-        "system_prompt_preview": &assembled[..std::cmp::min(500, assembled.len())],
+        "system_prompt_preview": preview,
     }))
 }
 
@@ -241,6 +255,7 @@ pub async fn send_ai_message_with_tools(
     working_dir: Option<String>,
     persona_loader: State<'_, PersonaLoader>,
     ds_client: State<'_, DeepSeekClient>,
+    undo_store: State<'_, UndoStore>,
 ) -> Result<serde_json::Value, String> {
     let persona_ctx = persona_loader.load(&mode)?;
 
@@ -251,26 +266,7 @@ pub async fn send_ai_message_with_tools(
     let ds_for_loop = ds_client.inner().clone();
     let deepseek_arc = Arc::new(ds_for_loop);
 
-    // #region debug-point B:history-types
-    for (i, h) in history.iter().enumerate() {
-        eprintln!("[DEBUG] history[{}]: role={}, type={:?}", i, h.role, h.r#type);
-        let debug_url = std::fs::read_to_string(".dbg/ai-400-bad-request.env")
-            .ok()
-            .and_then(|s| s.lines().find(|l| l.starts_with("DEBUG_SERVER_URL=")).map(|l| l[17..].trim().to_string()))
-            .unwrap_or_else(|| "http://127.0.0.1:7777/event".to_string());
-        let _ = reqwest::Client::new().post(&debug_url)
-            .json(&serde_json::json!({
-                "sessionId": "ai-400-bad-request",
-                "runId": "post-fix",
-                "hypothesisId": "B",
-                "location": "commands/ai.rs:250",
-                "msg": format!("[DEBUG] history[{}] type", i),
-                "data": { "index": i, "role": h.role, "type": h.r#type, "content_len": h.content.len() },
-            }))
-            .send()
-            .await;
-    }
-    // #endregion debug-point
+    let run_id = new_run_id();
 
     let input = AgentLoopInput {
         mode: mode.clone(),
@@ -280,6 +276,8 @@ pub async fn send_ai_message_with_tools(
         working_dir: wd,
         deepseek: deepseek_arc,
         persona_ctx,
+        run_id: run_id.clone(),
+        undo_store: Arc::new(undo_store.inner().clone()),
     };
 
     // 事件转发到 Tauri：每个 agent 事件触发 ai-agent-event
@@ -292,16 +290,30 @@ pub async fn send_ai_message_with_tools(
     }).await?;
 
     // 不返回 events 数组（已通过 Tauri 事件实时推送），只返回摘要
-    // #region debug-point dp-2: 打印最终返回摘要
-    eprintln!("[DEBUG] send_ai_message_with_tools OK: iterations={}, tool_calls={}", output.total_iterations, output.total_tool_calls);
-    // #endregion debug-point
     Ok(serde_json::json!({
         "content": output.final_content,
         "total_iterations": output.total_iterations,
         "total_tool_calls": output.total_tool_calls,
         "mode": mode,
         "event_count": output.events.len(),
+        "run_id": output.run_id,
+        "context_tokens": output.context_tokens,
+        "compressed": output.compressed,
     }))
+}
+
+/// 查询某次 Agent 运行记录的"可撤销文件变更"数量（撤回对话框用）
+#[tauri::command]
+pub fn get_run_undo_count(run_id: String, undo_store: State<'_, UndoStore>) -> usize {
+    undo_store.count(&run_id)
+}
+
+/// 撤销某次 Agent 运行的文件变更（write/edit 修改的文件恢复原样，新建文件删除）
+/// 返回：撤销动作描述列表
+#[tauri::command]
+pub fn undo_run_changes(run_id: String, undo_store: State<'_, UndoStore>) -> Vec<String> {
+    let entries = undo_store.take(&run_id);
+    apply_undo(&entries)
 }
 
 /// 检查 DeepSeek 连接健康状态

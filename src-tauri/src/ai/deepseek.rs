@@ -235,33 +235,13 @@ impl DeepSeekClient {
             tool_choice: if tools.is_some() { Some("auto".to_string()) } else { None },
         };
 
-        // #region debug-point A:request-body
-        if let Ok(req_json) = serde_json::to_string(&req) {
-            eprintln!("[DEBUG] Request body ({} bytes): {}", req_json.len(), &req_json[..req_json.len().min(2000)]);
-            let debug_url = std::fs::read_to_string(".dbg/ai-400-bad-request.env")
-                .ok()
-                .and_then(|s| s.lines().find(|l| l.starts_with("DEBUG_SERVER_URL=")).map(|l| l[17..].trim().to_string()))
-                .unwrap_or_else(|| "http://127.0.0.1:7777/event".to_string());
-            let _ = self.client.post(&debug_url)
-                .json(&serde_json::json!({
-                    "sessionId": "ai-400-bad-request",
-                    "runId": "post-fix",
-                    "hypothesisId": "A",
-                    "location": "deepseek.rs:240",
-                    "msg": "[DEBUG] Request body preview",
-                    "data": { "request_json": req_json },
-                }))
-                .send()
-                .await;
-        }
-        // #endregion debug-point
-
         let resp = self
             .client
             .post(format!("{}/v1/chat/completions", config.base_url))
             .header("Authorization", format!("Bearer {}", config.api_key))
             .header("Content-Type", "application/json")
             .json(&req)
+            .timeout(std::time::Duration::from_secs(300))
             .send()
             .await
             .map_err(|e| format!("Network error: {}", e))?;
@@ -275,7 +255,7 @@ impl DeepSeekClient {
         let body = resp.text().await.map_err(|e| format!("Read response error: {}", e))?;
 
         let chat_resp: ChatResponse = serde_json::from_str(&body)
-            .map_err(|e| format!("Parse error: {} | body: {}", e, &body[..body.len().min(500)]))?;
+            .map_err(|e| format!("Parse error: {} | body: {}", e, truncate_chars_preview(&body, 500)))?;
 
         Ok(chat_resp)
     }
@@ -331,6 +311,7 @@ impl DeepSeekClient {
             .header("Authorization", format!("Bearer {}", config.api_key))
             .header("Content-Type", "application/json")
             .json(&req)
+            .timeout(std::time::Duration::from_secs(300))
             .send()
             .await
             .map_err(|e| format!("Stream error: {}", e))?;
@@ -398,6 +379,19 @@ impl DeepSeekClient {
             Err(e) => Err(format!("Connection failed: {}", e)),
         }
     }
+}
+
+/// 安全截断字符串前 N 个字符（避免 UTF-8 多字节切片 panic）
+fn truncate_chars_preview(s: &str, max_chars: usize) -> String {
+    let mut out = String::new();
+    for (i, ch) in s.chars().enumerate() {
+        if i >= max_chars {
+            out.push_str("...");
+            return out;
+        }
+        out.push(ch);
+    }
+    out
 }
 
 impl Default for DeepSeekClient {

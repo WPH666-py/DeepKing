@@ -3,9 +3,12 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+
+use crate::ai::undo::{UndoEntry, UndoStore};
 
 const CREATE_NO_WINDOW_FLAG: u32 = 0x08000000;
 
@@ -74,11 +77,30 @@ pub struct ToolFunctionSchema {
 
 pub struct ToolRegistry {
     pub working_dir: PathBuf,
+    /// 撤销日志去向（run_id + 存储）；为 None 时不记录
+    undo_sink: Option<(String, Arc<UndoStore>)>,
 }
 
 impl ToolRegistry {
     pub fn new(working_dir: PathBuf) -> Self {
-        Self { working_dir }
+        Self { working_dir, undo_sink: None }
+    }
+
+    pub fn new_with_undo(working_dir: PathBuf, run_id: String, store: Arc<UndoStore>) -> Self {
+        Self { working_dir, undo_sink: Some((run_id, store)) }
+    }
+
+    /// 记录"变更前状态"，供撤回对话时回滚
+    fn record_undo(&self, path: &Path) {
+        if let Some((run_id, store)) = &self.undo_sink {
+            let existed = path.exists();
+            let original = if existed { std::fs::read(path).unwrap_or_default() } else { Vec::new() };
+            store.record(run_id, UndoEntry {
+                path: path.to_string_lossy().to_string(),
+                existed,
+                original,
+            });
+        }
     }
 
     /// 获取所有工具的 schema（发给模型）
@@ -256,6 +278,9 @@ impl ToolRegistry {
             content.replacen(old_string, new_string, 1)
         };
 
+        // 记录变更前状态（撤回对话用）
+        self.record_undo(&full);
+
         match std::fs::write(&full, &new_content) {
             Ok(_) => ToolResult {
                 success: true,
@@ -301,6 +326,8 @@ impl ToolRegistry {
         if let Some(parent) = full.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
+        // 记录变更前状态（撤回对话用）
+        self.record_undo(&full);
         match std::fs::write(&full, content) {
             Ok(_) => ToolResult {
                 success: true,
@@ -1148,12 +1175,23 @@ async fn run_cmd_with_timeout(command: &str, cwd: &Path, timeout_ms: u64) -> Cmd
     let python_dir = crate::ai::file_parser::bundled_python()
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    // 临时脚本文件（保存后由 shell 执行，避免 cmd.exe 对含引号命令的转义问题）
+    let script_path = std::env::temp_dir().join(format!("dking_{}_{}.cmd", std::process::id(), nanoid_suffix()));
+    // 写入脚本（Windows 上 cmd 以 OEM/ANSI 编码读取 .cmd，中文环境为 GBK，用 encoding_rs 编码）
+    let script_bytes = {
+        let (cow, _, _) = encoding_rs::GBK.encode(&cmd_str);
+        cow.into_owned()
+    };
+    let _ = std::fs::write(&script_path, script_bytes);
+
+    let cleanup_path = script_path.clone();
     let result = tokio::task::spawn_blocking(move || {
         #[cfg(target_os = "windows")]
         let output = {
+            let script_str = script_path.to_string_lossy().to_string();
             let mut cmd = Command::new("cmd");
             hide_window(&mut cmd);
-            cmd.args(&["/C", &cmd_str])
+            cmd.args(["/D", "/C", script_str.as_str()])
                 .current_dir(&cwd)
                 .env("PYTHONIOENCODING", "utf-8");
             if let Some(ref py_dir) = python_dir {
@@ -1175,6 +1213,8 @@ async fn run_cmd_with_timeout(command: &str, cwd: &Path, timeout_ms: u64) -> Cmd
         output
     }).await;
 
+    let _ = std::fs::remove_file(&cleanup_path);
+
     match result {
         Ok(Ok(out)) => CmdOutput {
             success: out.status.success(),
@@ -1195,4 +1235,14 @@ async fn run_cmd_with_timeout(command: &str, cwd: &Path, timeout_ms: u64) -> Cmd
             exit_code: -1,
         },
     }
+}
+
+/// 生成一个短随机后缀（基于系统时间 + 进程内计数器，避免依赖 rand 库）
+fn nanoid_suffix() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("{}_{}", nanos, std::process::id())
 }

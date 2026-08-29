@@ -5,7 +5,7 @@ pub mod commands;
 pub mod ai;
 pub mod cli;
 
-pub use ai::{DeepSeekClient, PersonaLoader};
+pub use ai::{DeepSeekClient, PersonaLoader, UndoStore};
 
 /// 文件条目（用于文件树）
 #[derive(Debug, Serialize, Deserialize, Clone)]

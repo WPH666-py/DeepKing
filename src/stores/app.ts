@@ -4,6 +4,14 @@ import { tauriAPI, type ModeInfo, type Message, type AgentDef, type FileEntry } 
 import type { EditorTheme } from "../utils/codemirror";
 import { applySkin, type SkinVariant } from "../utils/skins";
 
+/** 生成消息 ID（WebView 支持 crypto.randomUUID 时优先） */
+function newMsgId(): string {
+  try {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  } catch (_) {}
+  return `m_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export const useAppStore = defineStore("app", () => {
   const currentProject = ref<string | null>(null);
   const currentMode = ref<string>("dsh");
@@ -25,6 +33,10 @@ export const useAppStore = defineStore("app", () => {
   const isLoading = ref(false);
   const totalTokens = ref(0);
   const streamingContent = ref("");  // 流式响应当前累积内容
+  // 上下文统计（最近一次 Agent 运行发送给模型的估算 Token 数）
+  const lastContextTokens = ref(0);
+  // 每条用户消息触发的 Agent 运行 ID（撤回对话时按 run 回滚文件变更）
+  const runIdsByUserMsg = new Map<string, string>();
 
   // Agent Loop 工具调用追踪
   const toolCalls = ref<Array<{
@@ -101,20 +113,35 @@ export const useAppStore = defineStore("app", () => {
       return;
     }
 
-    messages.value.push({ role: "user", content, type: "user" });
+    const userMsg: Message = { id: newMsgId(), role: "user", content, type: "user" };
+    messages.value.push(userMsg);
     isLoading.value = true;
     streamingContent.value = "";
     const history = messages.value.filter(m => m.role !== "system");
 
     // 添加占位消息，用于流式更新
-    messages.value.push({ role: "assistant", content: "", type: "assistant" });
+    messages.value.push({ id: newMsgId(), role: "assistant", content: "", type: "assistant" });
     const msgIndex = messages.value.length - 1;
+
+    // 兜底：20 分钟未返回则强制恢复界面（正常长流式请求不会受影响）
+    let streamSettled = false;
+    const streamWatchdog = setTimeout(() => {
+      if (!streamSettled) {
+        console.warn("[DeepKing] Stream IPC did not settle; forcing UI recovery.");
+        messages.value[msgIndex].content = messages.value[msgIndex].content || "⚠️ 会话在后台中断，界面已自动恢复。";
+        isLoading.value = false;
+      }
+    }, 20 * 60 * 1000);
 
     try {
       await tauriAPI.sendAIMessageStream(currentMode.value, content, history, contextPaths);
+      streamSettled = true;
+      clearTimeout(streamWatchdog);
       // 流式 completion 后，content 从 event 中积累
       messages.value[msgIndex].content = streamingContent.value;
     } catch (e: any) {
+      streamSettled = true;
+      clearTimeout(streamWatchdog);
       messages.value[msgIndex].content = `错误: ${e}`;
     } finally {
       isLoading.value = false;
@@ -129,7 +156,8 @@ export const useAppStore = defineStore("app", () => {
       return;
     }
 
-    messages.value.push({ role: "user", content, type: "user" });
+    const userMsg: Message = { id: newMsgId(), role: "user", content, type: "user" };
+    messages.value.push(userMsg);
     isLoading.value = true;
     streamingContent.value = "";
     toolCalls.value = [];
@@ -138,7 +166,7 @@ export const useAppStore = defineStore("app", () => {
     const history = messages.value.filter(m => m.role !== "system");
 
     // 添加占位消息
-    messages.value.push({ role: "assistant", content: "🛠 工具调用中...\n", type: "assistant" });
+    messages.value.push({ id: newMsgId(), role: "assistant", content: "🛠 工具调用中...\n", type: "assistant" });
     const msgIndex = messages.value.length - 1;
     let accumulatedText = "";
 
@@ -158,53 +186,94 @@ export const useAppStore = defineStore("app", () => {
       ? content
       : `${content}\n\n[System] 本次请求不涉及代码生成。请把回答整理成 Markdown 文档并保存到工作区，文件名要反映主题。最终回复中只给出文件路径和简要说明，不要输出大段正文。`;
 
+    // 防"思考中"卡死：事件后若 IPC 在超时内未返回，强制恢复界面
+    let invokeSettled = false;
+    let watchdogTimer: ReturnType<typeof setTimeout> | null = null;
+    function armWatchdog(ms: number) {
+      if (watchdogTimer) clearTimeout(watchdogTimer);
+      watchdogTimer = setTimeout(() => {
+        if (!invokeSettled) {
+          console.warn("[DeepKing] Agent loop IPC did not settle; forcing UI recovery.");
+          messages.value[msgIndex].content =
+            messages.value[msgIndex].content ||
+            "⚠️ 会话在后台中断（网络/服务异常），界面已自动恢复。您可以重新发送该问题。";
+          isLoading.value = false;
+          invokeSettled = true;
+          try { unlisten(); } catch (_) {}
+        }
+      }, ms);
+    }
+    function clearWatchdog() {
+      if (watchdogTimer) { clearTimeout(watchdogTimer); watchdogTimer = null; }
+    }
+    let unlisten: () => void = () => {};
+
     try {
       // 订阅事件，实时更新 toolCalls 状态
       const { listen } = await import("@tauri-apps/api/event");
-      const unlisten = await listen("ai-agent-event", (event: any) => {
+      unlisten = await listen("ai-agent-event", (event: any) => {
         const ev = event.payload;
-        if (!ev || !ev.kind) return;
+        if (!ev || !ev.kind || !ev.kind.type) return;
         const k = ev.kind;
-        if (k.type === "started") {
-          agentMaxIterations.value = k.max_iterations;
-        } else if (k.type === "iteration") {
-          agentIterations.value = k.current;
-          updateAssistantContent();
-        } else if (k.type === "tool_call_requested") {
-          toolCalls.value.push({
-            id: k.id, name: k.name, arguments: k.arguments,
-            status: "running"
-          });
-        } else if (k.type === "tool_call_executed") {
-          const tc = toolCalls.value.find(t => t.id === k.id);
-          if (tc) {
-            tc.success = k.success;
-            tc.output = k.output;
-            tc.status = k.success ? "done" : "error";
+        try {
+          if (k.type === "started") {
+            agentMaxIterations.value = k.max_iterations;
+            // 兜底：整个运行最长 10 分钟无结果则强制恢复界面
+            armWatchdog(600000);
+          } else if (k.type === "iteration") {
+            agentIterations.value = k.current;
+            updateAssistantContent();
+          } else if (k.type === "tool_call_requested") {
+            toolCalls.value.push({
+              id: k.id, name: k.name, arguments: k.arguments,
+              status: "running"
+            });
+          } else if (k.type === "tool_call_executed") {
+            const tc = toolCalls.value.find(t => t.id === k.id);
+            if (tc) {
+              tc.success = k.success;
+              tc.output = k.output;
+              tc.status = k.success ? "done" : "error";
+            }
+          } else if (k.type === "assistant_text") {
+            accumulatedText += k.content;
+            updateAssistantContent();
+          } else if (k.type === "context_compressed") {
+            const before = (k.before_tokens || 0) / 1000;
+            const after = (k.after_tokens || 0) / 1000;
+            addSystemMessage(`📦 上下文自动压缩：${before.toFixed(1)}k → ${after.toFixed(1)}k Tokens（历史过长，已保留最近对话）`);
+          } else if (k.type === "done") {
+            messages.value[msgIndex].content = accumulatedText || k.content;
+            armWatchdog(20000);
+          } else if (k.type === "error") {
+            messages.value[msgIndex].content = `❌ 错误: ${k.message}`;
+            armWatchdog(20000);
+          } else if (k.type === "file_changed") {
+            // 工具改了文件，刷新文件树
+            if (currentProject.value) {
+              loadFileTree(currentProject.value);
+            }
           }
-        } else if (k.type === "assistant_text") {
-          accumulatedText += k.content;
-          updateAssistantContent();
-        } else if (k.type === "done") {
-          messages.value[msgIndex].content = accumulatedText || k.content;
-        } else if (k.type === "error") {
-          messages.value[msgIndex].content = `❌ 错误: ${k.message}`;
-        } else if (k.type === "file_changed") {
-          // 工具改了文件，刷新文件树
-          if (currentProject.value) {
-            loadFileTree(currentProject.value);
-          }
+        } catch (err: any) {
+          console.error("[DeepKing] agent event handler error:", err, ev);
         }
       });
 
       const wd = workingDir || currentProject.value || undefined;
       const result = await tauriAPI.sendAIMessageWithTools(currentMode.value, requestContent, history, contextPaths, wd);
+      invokeSettled = true;
+      clearWatchdog();
       messages.value[msgIndex].content = messages.value[msgIndex].content || result.content;
+      runIdsByUserMsg.set(userMsg.id || "", result.run_id);
+      lastContextTokens.value = result.context_tokens || 0;
       addSystemMessage(`✅ Agent Loop 完成: ${result.total_iterations} 步, ${result.total_tool_calls} 个工具调用`);
 
       unlisten();
     } catch (e: any) {
+      invokeSettled = true;
+      clearWatchdog();
       messages.value[msgIndex].content = `❌ 错误: ${e}`;
+      lastContextTokens.value = 0;
     } finally {
       isLoading.value = false;
     }
@@ -230,7 +299,7 @@ export const useAppStore = defineStore("app", () => {
       return;
     }
 
-    messages.value.push({ role: "user", content, type: "user" });
+    messages.value.push({ id: newMsgId(), role: "user", content, type: "user" });
     isLoading.value = true;
 
     try {
@@ -243,17 +312,37 @@ export const useAppStore = defineStore("app", () => {
         resp = await tauriAPI.sendAIMessage(currentMode.value, content, history, contextPaths);
       }
 
+      resp.message.id = newMsgId();
       messages.value.push(resp.message);
       totalTokens.value += resp.usage.total_tokens;
     } catch (e: any) {
-      messages.value.push({ role: "assistant", content: `错误: ${e}` });
+      messages.value.push({ id: newMsgId(), role: "assistant", content: `错误: ${e}` });
     } finally {
       isLoading.value = false;
     }
   }
 
+  // ─── 撤回对话 ───
+  /// 某条消息触发的 Agent 运行 ID（没有则返回空串）
+  function runIdForMsg(msgId: string): string {
+    return runIdsByUserMsg.get(msgId) || "";
+  }
+  /// 移除从 index 开始的所有消息
+  function removeMessagesFrom(index: number) {
+    if (index < 0 || index >= messages.value.length) return;
+    messages.value.splice(index);
+    toolCalls.value = [];
+    agentIterations.value = 0;
+    agentMaxIterations.value = 0;
+  }
+  /// 清除从 index 开始的消息对应的 run 追踪（避免内存泄漏）
+  function clearRunIdsFrom(index: number) {
+    const ids = messages.value.slice(index).map(m => m.id || "").filter(Boolean);
+    for (const id of ids) runIdsByUserMsg.delete(id);
+  }
+
   function addSystemMessage(content: string) {
-    messages.value.push({ role: "system", content, type: "system" });
+    messages.value.push({ id: newMsgId(), role: "system", content, type: "system" });
   }
 
   // ─── 多模态视觉配置 ───
@@ -338,13 +427,14 @@ export const useAppStore = defineStore("app", () => {
     currentProject, currentMode, currentAgent,
     apiKey, baseUrl, model,
     personaInfo, personaLoading, agents,
-    messages, isLoading, totalTokens, displayMessages, streamingContent,
+    messages, isLoading, totalTokens, displayMessages, streamingContent, lastContextTokens,
     fileTree, fileTreePath, selectedFile,
     editorTheme,
     setProject, openProject, closeProject,
     loadFileTree,
     switchMode, loadAgents, configureApiKey,
     sendMessage, sendMessageStream, sendMessageWithTools, appendStreamToken, addSystemMessage, clearMessages,
+    runIdForMsg, removeMessagesFrom, clearRunIdsFrom,
     toolCalls, agentIterations, agentMaxIterations, useTools,
     setEditorTheme,
     skinId, skinVariant, setSkin,

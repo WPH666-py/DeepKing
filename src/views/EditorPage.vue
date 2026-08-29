@@ -116,14 +116,21 @@
             @click="switchTab(tab.path)"
             @contextmenu.stop.prevent="onTabContextMenu($event, tab.path)"
           >
-            <span>{{ tab.name }}</span>
+            <span>{{ tab.kind === "table" ? "📊 " : tab.kind === "md" ? "📝 " : "" }}{{ tab.name }}</span>
             <span v-if="tab.dirty" class="tab-dirty">●</span>
             <span class="tab-close" @click.stop="closeTab(tab.path)">&times;</span>
           </div>
+          <button
+            v-if="activeTab && activeTabKind === 'md'"
+            class="tab-preview-toggle"
+            :title="showMdPreview ? '切换到编辑模式' : '切换到预览模式'"
+            @click="toggleMdPreview"
+          >{{ showMdPreview ? "✎ 编辑" : "👁 预览" }}</button>
         </div>
         <div class="editor-main-content" id="editorMainContent">
-          <div class="code-editor" id="cm-editor" v-show="!showImagePreview && openTabs.length > 0" @contextmenu="onEditorContextMenu"></div>
-          <div class="editor-empty" v-show="!showImagePreview && openTabs.length === 0">
+          <div class="code-editor" id="cm-editor" v-show="!showImagePreview && !showMdPreview && openTabs.length > 0" @contextmenu="onEditorContextMenu"></div>
+          <div class="md-preview" id="mdPreview" v-show="showMdPreview" v-html="mdPreviewHtml"></div>
+          <div class="editor-empty" v-show="!showImagePreview && !showMdPreview && openTabs.length === 0">
             <div class="editor-empty-icon">📂</div>
             <div class="editor-empty-title">未打开文件</div>
             <div class="editor-empty-desc">从左侧文件树双击打开文件，或拖拽文件到此处</div>
@@ -162,9 +169,15 @@
         <div class="ai-panel-content" :class="{ active: aiTab === 'chat' }" id="aiChatPanel">
           <div class="ai-chat" ref="aiChatRef">
             <div v-if="!store.displayMessages.length && !store.isLoading" class="message ai-message">欢迎使用AI助手！请先在下方选择或配置AI模型。</div>
-            <div v-for="(msg, i) in store.displayMessages" :key="i" class="message" :class="msgClass(msg.role)">
+            <div v-for="(msg, i) in store.displayMessages" :key="msg.id || i" class="message" :class="msgClass(msg.role)">
               <div class="msg-role">{{ roleLabel(msg.role) }}</div>
               <div class="msg-content">{{ msg.content }}</div>
+              <button
+                v-if="msg.role === 'user' && !store.isLoading"
+                class="msg-withdraw"
+                title="撤回该对话：内容回到输入框，并撤销本轮代码修改与结果"
+                @click="withdrawMessage(i)"
+              >↩ 撤回</button>
             </div>
             <div v-if="store.isLoading" class="message ai-message"><div class="msg-role">AI</div><div class="msg-content">{{ store.streamingContent || '思考中...' }}</div></div>
           </div>
@@ -172,6 +185,9 @@
             <div class="ai-context-bar">
               <span v-for="(ctx, idx) in aiContextFiles" :key="idx" class="ai-context-chip">{{ ctx.name }}<span class="chip-remove" @click="removeContextFile(idx)">×</span></span>
               <button class="ai-context-add-btn" @click="showFilePicker = true">+ 添加文件</button>
+              <span v-if="store.lastContextTokens" class="ai-context-stats" title="最近一次 AI 运行发送给模型的上下文（估算）">
+                上下文 ~{{ (store.lastContextTokens / 1000).toFixed(1) }}k Tokens
+              </span>
             </div>
             <textarea
               ref="aiInputRef"
@@ -585,6 +601,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile, remove, rename, mkdir, exists } from "@tauri-apps/plugin-fs";
 import { getAllSkins, getSkinById, addCustomSkin, removeCustomSkin, applySkin, type SkinDefinition, type SkinVariant } from "../utils/skins";
 import { convertGitHubRepoToSkin } from "../utils/skinConverter";
+import { markdownToHtml } from "../utils/markdown";
 
 const emit = defineEmits<{ (e: "navigate", page: string): void }>();
 const store = useAppStore();
@@ -734,12 +751,15 @@ const multimodalEnabled = ref(false);
 const maxMode = ref(true);
 
 // Tab 管理
-interface TabInfo { path: string; name: string; dirty: boolean; content?: string; }
+interface TabInfo { path: string; name: string; dirty: boolean; content?: string; kind?: "code" | "md" | "table"; previewHtml?: string; }
 const openTabs = ref<TabInfo[]>([]);
 const activeTab = ref("");
 const cmView = ref<EditorView | null>(null);
 const currentFile = ref<string | null>(null);
 const isModified = ref(false);
+// Markdown / 数据表格预览（基于 v-html 渲染）
+const showMdPreview = ref(false);
+const mdPreviewHtml = ref("");
 
 // 右键菜单
 const fileContextMenu = ref({ visible: false, x: 0, y: 0 });
@@ -893,6 +913,14 @@ function addCustomRuntime() {
 }
 
 // ─── 文件打开/Tab ───
+function ensureTab(path: string, name: string): TabInfo {
+  let tab = openTabs.value.find(t => t.path === path);
+  if (!tab) {
+    tab = { path, name, dirty: false, content: "" };
+    openTabs.value.push(tab);
+  }
+  return tab;
+}
 async function openFile(path: string) {
   const name = path.split(/[\\/]/).pop() || path;
   const ext = name.split(".").pop()?.toLowerCase() || "";
@@ -908,8 +936,31 @@ async function openFile(path: string) {
       return;
     } catch (e) { console.error(e); }
   }
-  // 二进制文件（Office/PDF/CSV）用系统默认程序打开
-  const binaryExts = ["xlsx", "xls", "docx", "doc", "pptx", "ppt", "pdf", "csv"];
+  // CSV / Excel：在线渲染为表格（不再调用系统默认程序）
+  if (ext === "csv") {
+    try {
+      const md = await tauriAPI.previewCsv(path);
+      const tab = ensureTab(path, name);
+      tab.kind = "table";
+      tab.previewHtml = markdownToHtml(md);
+      activeTab.value = path;
+      switchTab(path);
+      return;
+    } catch (e: any) { alert("CSV 预览失败: " + e); return; }
+  }
+  if (ext === "xlsx" || ext === "xls") {
+    try {
+      const md = await tauriAPI.previewExcel(path);
+      const tab = ensureTab(path, name);
+      tab.kind = "table";
+      tab.previewHtml = markdownToHtml(md);
+      activeTab.value = path;
+      switchTab(path);
+      return;
+    } catch (e: any) { alert("Excel 预览失败: " + e); return; }
+  }
+  // 二进制文件（Office/PDF）用系统默认程序打开
+  const binaryExts = ["docx", "doc", "pptx", "ppt", "pdf"];
   if (binaryExts.includes(ext)) {
     try {
       await invoke("open_file_with_default_app", { path });
@@ -924,11 +975,18 @@ async function openFile(path: string) {
       setEditorLanguage(cmView.value, name, store.editorTheme);
     }
     showImagePreview.value = false;
-    if (!openTabs.value.find(t => t.path === path)) {
-      openTabs.value.push({ path, name, dirty: false, content });
+    const tab = ensureTab(path, name);
+    tab.content = content;
+    if (ext === "md") {
+      // Markdown：默认进"预览"模式，可切换"编辑"
+      tab.kind = "md";
+      tab.previewHtml = markdownToHtml(content);
+    } else {
+      tab.kind = "code";
     }
     activeTab.value = path;
     isModified.value = false;
+    switchTab(path);
   } catch (e: any) { alert("读取文件失败: " + e); }
 }
 function switchTab(path: string) {
@@ -936,21 +994,27 @@ function switchTab(path: string) {
   if (!tab) return;
   activeTab.value = path;
   currentFile.value = path;
-  // 检查是否是图片 tab
   const ext = tab.name.split(".").pop()?.toLowerCase() || "";
   const imageExts = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"];
+  // 图片 tab：显示图片预览
   if (imageExts.includes(ext) && tab.content === "") {
-    // 图片 tab：显示预览
     showImagePreview.value = true;
+    showMdPreview.value = false;
     // 重新生成 blob URL（之前的可能已被 revoke）
     invoke<number[]>("read_file_bytes", { path: tab.path }).then(data => {
       if (URL.revokeObjectURL) URL.revokeObjectURL(imagePreviewSrc.value);
       const blob = new Blob([new Uint8Array(data)], { type: `image/${ext === "svg" ? "svg+xml" : ext}` });
       imagePreviewSrc.value = URL.createObjectURL(blob);
     }).catch(e => console.error(e));
+  } else if (tab.kind === "md" || tab.kind === "table") {
+    // Markdown / 数据表格：渲染预览
+    showImagePreview.value = false;
+    showMdPreview.value = true;
+    mdPreviewHtml.value = tab.previewHtml || "";
   } else {
     // 普通文件 tab：显示编辑器
     showImagePreview.value = false;
+    showMdPreview.value = false;
     if (cmView.value) {
       setEditorContent(cmView.value, tab.content || "");
       setEditorLanguage(cmView.value, tab.name, store.editorTheme);
@@ -967,6 +1031,10 @@ async function closeTab(path: string) {
   // 如果关闭的是图片预览 tab，隐藏预览
   if (showImagePreview.value && activeTab.value === path) {
     showImagePreview.value = false;
+  }
+  // 如果关闭的是 Markdown/表格预览 tab，隐藏预览
+  if (showMdPreview.value && activeTab.value === path) {
+    showMdPreview.value = false;
   }
   if (activeTab.value === path) {
     if (openTabs.value.length) {
@@ -1336,6 +1404,89 @@ async function handleSend() {
     await store.sendMessageStream(t, ctxPaths);
   }
   nextTick(() => { if (aiChatRef.value) aiChatRef.value.scrollTop = aiChatRef.value.scrollHeight; });
+}
+
+// 当前激活 Tab 的类型（用于显示预览/编辑切换按钮）
+const activeTabKind = computed(() => {
+  const tab = openTabs.value.find(t => t.path === activeTab.value);
+  return tab?.kind || "code";
+});
+
+/** Markdown Tab：预览 ⇄ 编辑 切换 */
+function toggleMdPreview() {
+  const tab = openTabs.value.find(t => t.path === activeTab.value);
+  if (!tab || tab.kind !== "md") return;
+  // 切到编辑：把当前编辑器内容同步回 tab.content
+  if (showMdPreview.value) {
+    showMdPreview.value = false;
+  } else {
+    if (!tab.previewHtml || tab.content !== undefined) {
+      tab.previewHtml = markdownToHtml(tab.content || "");
+    }
+    showMdPreview.value = true;
+  }
+}
+
+/** 撤回对话：用户消息回到输入框，撤销该轮 Agent 的文件修改，删除后续消息 */
+async function withdrawMessage(i: number) {
+  if (store.isLoading) { alert("AI 正在运行中，请等待完成后再撤回。"); return; }
+  const msg = store.messages[i];
+  if (!msg || msg.role !== "user") return;
+
+  // 1. 收集被删除消息对应的 Agent 运行 ID
+  const runIds: string[] = [];
+  for (let j = i; j < store.messages.length; j++) {
+    const rid = store.runIdForMsg(store.messages[j].id || "");
+    if (rid) runIds.push(rid);
+  }
+  // 2. 撤销文件变更（write/edit 恢复原样，新建文件删除）
+  const undoNotes: string[] = [];
+  for (const rid of runIds) {
+    try {
+      const notes = await tauriAPI.undoRunChanges(rid);
+      undoNotes.push(...notes);
+    } catch (e: any) { console.warn("undo failed", rid, e); }
+  }
+  // 3. 删除消息 + 清理 run 追踪
+  store.clearRunIdsFrom(i);
+  store.removeMessagesFrom(i);
+  // 4. 消息内容回填输入框
+  chatInput.value = msg.content;
+  aiContextFiles.value = [];
+  nextTick(() => {
+    if (aiInputRef.value) { aiInputRef.value.focus(); autoResizeAIInput(); }
+  });
+  // 5. 刷新文件树 + 重载已打开的 Tab（内容可能被回滚）
+  if (store.currentProject) await store.loadFileTree(store.currentProject);
+  await reloadOpenTabs();
+  if (undoNotes.length) store.addSystemMessage(`↩ 已撤回对话并撤销 ${undoNotes.length} 处文件变更`);
+}
+
+/** 重新从磁盘读取已打开 Tab 的内容（撤回文件变更后调用） */
+async function reloadOpenTabs() {
+  for (const tab of openTabs.value) {
+    const ext = tab.name.split(".").pop()?.toLowerCase() || "";
+    if (["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"].includes(ext)) continue;
+    try {
+      const content = await tauriAPI.readFile(tab.path);
+      tab.content = content;
+      if (tab.kind === "md" || tab.kind === "table") {
+        tab.previewHtml = tab.kind === "md"
+          ? markdownToHtml(content)
+          : tab.previewHtml; // 表格预览由命令生成，保持现状
+      }
+      if (activeTab.value === tab.path) {
+        if (tab.kind === "md") {
+          mdPreviewHtml.value = tab.previewHtml || "";
+        } else if (tab.kind !== "table") {
+          if (cmView.value) {
+            setEditorContent(cmView.value, content);
+            setEditorLanguage(cmView.value, tab.name, store.editorTheme);
+          }
+        }
+      }
+    } catch (e) { /* 文件可能已被删除 */ }
+  }
 }
 
 // 粘贴图片（多模态开启时）：读剪贴板 → 存临时文件 → 记为待发送图片

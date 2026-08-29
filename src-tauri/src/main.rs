@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use deepking::{commands, cli, get_personas_dir, DeepSeekClient, PersonaLoader};
+use deepking::{commands, cli, get_personas_dir, DeepSeekClient, PersonaLoader, UndoStore};
 
 fn main() {
     let personas_dir = get_personas_dir();
@@ -14,6 +14,7 @@ fn main() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(persona_loader)
         .manage(ds_client)
+        .manage(UndoStore::new())
         .invoke_handler(tauri::generate_handler![
             // 项目
             commands::create_project,
@@ -34,6 +35,8 @@ fn main() {
             commands::send_ai_message_stream,
             commands::send_ai_message_with_tools,
             commands::check_deepseek_health,
+            commands::get_run_undo_count,
+            commands::undo_run_changes,
             commands::parse_context_file,
             commands::configure_vision,
             commands::get_vision_config,

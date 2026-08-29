@@ -354,6 +354,37 @@ fn convert_tsv_to_markdown(text: &str) -> String {
     result
 }
 
+/// 解析一行 CSV（支持双引号包裹字段、字段内逗号/转义引号）
+fn parse_csv_line(line: &str) -> Vec<String> {
+    let mut cells = Vec::new();
+    let mut cur = String::new();
+    let mut in_quotes = false;
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        if in_quotes {
+            if c == '"' {
+                if chars.peek() == Some(&'"') {
+                    cur.push('"');
+                    chars.next();
+                } else {
+                    in_quotes = false;
+                }
+            } else {
+                cur.push(c);
+            }
+        } else if c == '"' {
+            in_quotes = true;
+        } else if c == ',' {
+            cells.push(cur.clone());
+            cur.clear();
+        } else {
+            cur.push(c);
+        }
+    }
+    cells.push(cur);
+    cells
+}
+
 fn convert_csv_to_markdown(text: &str) -> String {
     let mut result = String::new();
     let mut first_line = true;
@@ -362,8 +393,7 @@ fn convert_csv_to_markdown(text: &str) -> String {
             result.push('\n');
             continue;
         }
-        // 简单 CSV 分割；复杂引号场景后续可扩展
-        let cells: Vec<String> = line.split(',').map(escape_md_cell).collect();
+        let cells: Vec<String> = parse_csv_line(line).iter().map(|c| escape_md_cell(c.trim())).collect();
         result.push_str("| ");
         result.push_str(&cells.join(" | "));
         result.push_str(" |\n");

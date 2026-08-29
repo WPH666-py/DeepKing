@@ -2,10 +2,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
+use crate::ai::context::{CompressedMessage, ContextCompressor};
 use crate::ai::deepseek::{DeepSeekClient, Message};
 use crate::ai::persona::{PersonaContext, TaskType, PromptAssembler, ContextFile};
 use crate::ai::tools::{ToolRegistry, ToolCall, ToolResult, ToolSchema, detect_runtimes};
+use crate::ai::undo::UndoStore;
 
 /// ─── Agent Loop 配置 ───
 
@@ -94,6 +97,8 @@ pub enum AgentEventKind {
     Error { message: String },
     /// 文件系统变化（write/edit/delete 等成功后触发，前端应刷新文件树）
     FileChanged { reason: String },
+    /// 上下文自动压缩发生（tool 调用链上提示）
+    ContextCompressed { before_tokens: usize, after_tokens: usize },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,6 +129,10 @@ pub struct AgentLoopInput {
     pub working_dir: PathBuf,
     pub deepseek: std::sync::Arc<DeepSeekClient>,
     pub persona_ctx: PersonaContext,
+    /// 本次运行的唯一 ID（撤回对话时按 run 回滚文件）
+    pub run_id: String,
+    /// 撤销日志存储
+    pub undo_store: Arc<UndoStore>,
 }
 
 pub struct AgentLoopOutput {
@@ -131,6 +140,12 @@ pub struct AgentLoopOutput {
     pub total_iterations: usize,
     pub total_tool_calls: usize,
     pub events: Vec<AgentEvent>,
+    /// 本次运行唯一 ID
+    pub run_id: String,
+    /// 估算的上下文 Token 数（发送给模型前）
+    pub context_tokens: usize,
+    /// 是否发生了上下文自动压缩
+    pub compressed: bool,
 }
 
 /// ─── 运行 Agent Loop ───
@@ -143,7 +158,7 @@ where
     F: FnMut(AgentEvent) + Send,
 {
     let config = LoopConfig::for_mode(&input.mode);
-    let tools = ToolRegistry::new(input.working_dir.clone());
+    let tools = ToolRegistry::new_with_undo(input.working_dir.clone(), input.run_id.clone(), input.undo_store.clone());
     let tool_schemas: Vec<ToolSchema> = ToolRegistry::schemas();
 
     // 记录执行前已存在的临时脚本，避免误删用户文件
@@ -181,7 +196,41 @@ where
     // 注入 persona 特有的循环规则
     system_prompt.push_str(&persona_loop_directives(&input.mode, &config));
 
-    // 2. 初始化消息历史
+    // 2. 初始化消息历史（历史超长时先做上下文自动压缩，只压缩发送前的历史，
+    //    当前用户消息与工具结果配对必须原样保留）
+    let mut compressed = false;
+    let mut history: Vec<Message> = input.history.clone();
+    {
+        let compressor = ContextCompressor::with_defaults();
+        let compressed_messages: Vec<CompressedMessage> = history.iter().map(|m| CompressedMessage {
+            role: m.role.clone(),
+            content: m.content.clone(),
+            estimated_tokens: ContextCompressor::estimate_tokens(&m.content),
+        }).collect();
+        if compressor.needs_compression(&compressed_messages) {
+            let before_tokens: usize = compressed_messages.iter().map(|m| m.estimated_tokens).sum();
+            let compressed_msgs = compressor.compress(&compressed_messages);
+            let after_tokens: usize = compressed_msgs.iter().map(|m| m.estimated_tokens).sum();
+            history = compressed_msgs.into_iter().map(|cm| Message {
+                role: cm.role.clone(),
+                content: cm.content.clone(),
+                tool_calls: None,
+                tool_call_id: None,
+                name: None,
+                r#type: cm.role.clone(),
+            }).collect();
+            compressed = true;
+            let ev = AgentEvent::new(AgentEventKind::ContextCompressed { before_tokens, after_tokens });
+            events.push(ev.clone());
+            on_event(ev);
+        }
+    }
+
+    // 估算发送给模型的上下文 Token 数（用于前端展示"上下文功能"）
+    let context_tokens: usize = ContextCompressor::estimate_tokens(&system_prompt)
+        + ContextCompressor::estimate_tokens(&input.user_message)
+        + history.iter().map(|m| ContextCompressor::estimate_tokens(&m.content)).sum::<usize>();
+
     let mut messages: Vec<Message> = Vec::new();
     messages.push(Message {
         role: "user".into(),
@@ -192,7 +241,7 @@ where
         r#type: "user".into(),
     });
     // 历史消息也加进去（如果 history 非空）
-    for h in &input.history {
+    for h in &history {
         let mut m = h.clone();
         // 兼容老格式：补全新字段
         if m.tool_calls.is_none() { m.tool_calls = None; }
@@ -312,6 +361,9 @@ where
                 total_iterations: iter + 1,
                 total_tool_calls,
                 events,
+                run_id: input.run_id.clone(),
+                context_tokens,
+                compressed,
             });
         }
 
@@ -411,6 +463,9 @@ where
         total_iterations: config.max_iterations,
         total_tool_calls,
         events,
+        run_id: input.run_id.clone(),
+        context_tokens,
+        compressed,
     })
 }
 
