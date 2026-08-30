@@ -80,6 +80,7 @@ const imgYelan = new URL("../assets/skins/genshin-yelan.png", import.meta.url).h
 const imgZibai = new URL("../assets/skins/genshin-zibai.png", import.meta.url).href;
 const imgGanyu = new URL("../assets/skins/genshin-ganyu.png", import.meta.url).href;
 const imgColumbina = new URL("../assets/skins/genshin-columbina.png", import.meta.url).href;
+const imgLinnea = new URL("../assets/skins/genshin-linnea.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -931,7 +932,51 @@ const columbinaSkin: SkinDefinition = {
   mascot: { light: imgColumbina, dark: imgColumbina },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin];
+/**
+ * 莉奈娅·备忘绝境生存指南风格 —— 源自 Genshen-Linnea-Skin
+ * 调色板直接取自壁纸原色：玫夜深红（#2a0e16/#1e080e）为整个编辑器底色，
+ * 暮粉瓷白（#fdf4f4）、蔷薇红（#d94a68）、樱粉（#f5b8c8）点缀
+ */
+const linneaSkin: SkinDefinition = {
+  id: "genshin-linnea",
+  name: "莉奈娅 · 备忘绝境生存指南",
+  source: "https://github.com/WPH666-py/Genshen-Linnea-Skin",
+  builtin: true,
+  description: "备忘绝境生存指南：暮粉瓷白与蔷薇红，暗色为玫夜深红（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#fdf4f4", bgText: "#6a2030",
+      sidebarBg: "#f7e6e8", sidebarText: "#8a4050", sidebarHover: "#f0d5da", sidebarSelected: "#f0b8c4", sidebarHeader: "#a87888",
+      editorBg: "#fdf4f4",
+      tabsBg: "#f7e6e8", tabBg: "#f7e6e8", tabText: "#a87888", tabActiveBg: "#fdf4f4", tabActiveText: "#6a2030",
+      aiBg: "#faecef", aiText: "#6a2030", aiTabText: "#a87888",
+      userBubbleBg: "#f5d5dc", userBubbleText: "#6a2030",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#6a2030", aiBubbleBorder: "#e0a8b8",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#6a2030", inputBorder: "#e0a8b8",
+      accent: "#d94a68", accentText: "#ffffff",
+      border: "#f0d5da",
+      chipBg: "#f8e0e6", chipText: "#8a4050", chipBorder: "#e0a8b8",
+    },
+    dark: {
+      bg: "#2a0e16", bgText: "#fae4ea",
+      sidebarBg: "#1e080e", sidebarText: "#c08a98", sidebarHover: "#40121e", sidebarSelected: "#5c1a2a", sidebarHeader: "#a87888",
+      editorBg: "#2a0e16",
+      tabsBg: "#1e080e", tabBg: "#2a0e16", tabText: "#a87888", tabActiveBg: "#40121e", tabActiveText: "#fae4ea",
+      aiBg: "#1e080e", aiText: "#f0d5dc", aiTabText: "#a87888",
+      userBubbleBg: "#5c1a2a", userBubbleText: "#fae8ee",
+      aiBubbleBg: "#40121e", aiBubbleText: "#f0d5dc", aiBubbleBorder: "#5c1a2a",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#40121e", inputText: "#f0d5dc", inputBorder: "#6a2a3a",
+      accent: "#f08aa8", accentText: "#2a0a12",
+      border: "#40121e",
+      chipBg: "#40121e", chipText: "#f0c0cc", chipBorder: "#6a2a3a",
+    },
+  },
+  mascot: { light: imgLinnea, dark: imgLinnea },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
