@@ -68,6 +68,7 @@ const imgCitlali = new URL("../assets/skins/genshin-citlali.png", import.meta.ur
 const imgKeqing = new URL("../assets/skins/genshin-keqing.png", import.meta.url).href;
 const imgKokomi = new URL("../assets/skins/genshin-kokomi.jpg", import.meta.url).href;
 const imgAyaka = new URL("../assets/skins/genshin-ayaka.jpg", import.meta.url).href;
+const imgYoimiya = new URL("../assets/skins/genshin-yoimiya.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -391,7 +392,51 @@ const ayakaSkin: SkinDefinition = {
   mascot: { light: imgAyaka, dark: imgAyaka },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin];
+/**
+ * 宵宫·琉金云间草风格 —— 源自 Genshen-Yoimiya-Skin
+ * 调色板直接取自壁纸原色：星火夜蓝（#222a52/#171d3d）为整个编辑器底色，
+ * 瓷白（#f8f6f3）、烟火红橙（#d9584a）、金琉光（#e5a677）点缀
+ */
+const yoimiyaSkin: SkinDefinition = {
+  id: "genshin-yoimiya",
+  name: "宵宫 · 琉金云间草",
+  source: "https://github.com/WPH666-py/Genshen-Yoimiya-Skin",
+  builtin: true,
+  description: "琉金云间草：烟火红橙与瓷白，暗色为星火夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f8f6f3", bgText: "#3c2a30",
+      sidebarBg: "#f3ecea", sidebarText: "#75505a", sidebarHover: "#ebe0dd", sidebarSelected: "#f3d0c4", sidebarHeader: "#8a6a70",
+      editorBg: "#f8f6f3",
+      tabsBg: "#f0e8e6", tabBg: "#f3ecea", tabText: "#8a6a70", tabActiveBg: "#f8f6f3", tabActiveText: "#3c2a30",
+      aiBg: "#f5efed", aiText: "#3c2a30", aiTabText: "#8b7078",
+      userBubbleBg: "#f7dfd3", userBubbleText: "#3c2a30",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#3c2a30", aiBubbleBorder: "#e5cdc2",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#3c2a30", inputBorder: "#d9b8ae",
+      accent: "#d9584a", accentText: "#ffffff",
+      border: "#e8d8d2",
+      chipBg: "#f9e2d4", chipText: "#8a4a3a", chipBorder: "#e0b49a",
+    },
+    dark: {
+      bg: "#222a52", bgText: "#f4e6d0",
+      sidebarBg: "#171d3d", sidebarText: "#a9a0c2", sidebarHover: "#2c3563", sidebarSelected: "#584b74", sidebarHeader: "#8a81a8",
+      editorBg: "#222a52",
+      tabsBg: "#171d3d", tabBg: "#222a52", tabText: "#8a81a8", tabActiveBg: "#2c3563", tabActiveText: "#f4e6d0",
+      aiBg: "#171d3d", aiText: "#f0e8dc", aiTabText: "#8a81a8",
+      userBubbleBg: "#584b74", userBubbleText: "#f7f2e9",
+      aiBubbleBg: "#2c3563", aiBubbleText: "#f0e8dc", aiBubbleBorder: "#584b74",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#2c3563", inputText: "#f0e8dc", inputBorder: "#494374",
+      accent: "#e5a677", accentText: "#2a1a10",
+      border: "#373965",
+      chipBg: "#494374", chipText: "#f2ddc8", chipBorder: "#584b74",
+    },
+  },
+  mascot: { light: imgYoimiya, dark: imgYoimiya },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
