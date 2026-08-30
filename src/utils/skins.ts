@@ -71,6 +71,7 @@ const imgAyaka = new URL("../assets/skins/genshin-ayaka.jpg", import.meta.url).h
 const imgYoimiya = new URL("../assets/skins/genshin-yoimiya.png", import.meta.url).href;
 const imgShogun = new URL("../assets/skins/genshin-shogun.png", import.meta.url).href;
 const imgNahida = new URL("../assets/skins/genshin-nahida.png", import.meta.url).href;
+const imgNilou = new URL("../assets/skins/genshin-nilou.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -526,7 +527,51 @@ const nahidaSkin: SkinDefinition = {
   mascot: { light: imgNahida, dark: imgNahida },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin];
+/**
+ * 妮露·浮莲舞步远梦聆泉风格 —— 源自 Genshen-Nilou-Skin
+ * 调色板直接取自壁纸原色：澄水夜蓝（#0e2a3e/#0a1f30）为整个编辑器底色，
+ * 瓷白（#f6faf9）、水之湛蓝（#3f9fc9）、莲紫（#8e7bd8）点缀
+ */
+const nilouSkin: SkinDefinition = {
+  id: "genshin-nilou",
+  name: "妮露 · 浮莲舞步远梦聆泉",
+  source: "https://github.com/WPH666-py/Genshen-Nilou-Skin",
+  builtin: true,
+  description: "浮莲舞步远梦聆泉：水蓝瓷白与莲紫，暗色为澄水夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f6faf9", bgText: "#14495e",
+      sidebarBg: "#e6f0f2", sidebarText: "#2c6a8a", sidebarHover: "#d3e8ec", sidebarSelected: "#bfe2ea", sidebarHeader: "#7d9aa8",
+      editorBg: "#f6faf9",
+      tabsBg: "#e6f0f2", tabBg: "#e6f0f2", tabText: "#6d93a8", tabActiveBg: "#f6faf9", tabActiveText: "#14495e",
+      aiBg: "#f0f7f9", aiText: "#14495e", aiTabText: "#6d93a8",
+      userBubbleBg: "#cfe8f2", userBubbleText: "#14495e",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#14495e", aiBubbleBorder: "#a5ccdb",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#14495e", inputBorder: "#a5ccdb",
+      accent: "#3f9fc9", accentText: "#ffffff",
+      border: "#d3e8ec",
+      chipBg: "#dbeaf2", chipText: "#2c6a8a", chipBorder: "#a5ccdb",
+    },
+    dark: {
+      bg: "#0e2a3e", bgText: "#e6f6fb",
+      sidebarBg: "#0a1f30", sidebarText: "#9cc4d8", sidebarHover: "#16384f", sidebarSelected: "#1f5678", sidebarHeader: "#6d93a8",
+      editorBg: "#0e2a3e",
+      tabsBg: "#0a1f30", tabBg: "#0e2a3e", tabText: "#6d93a8", tabActiveBg: "#16384f", tabActiveText: "#e6f6fb",
+      aiBg: "#0a1f30", aiText: "#dff3f8", aiTabText: "#6d93a8",
+      userBubbleBg: "#1f5678", userBubbleText: "#f2fbfd",
+      aiBubbleBg: "#16384f", aiBubbleText: "#dff3f8", aiBubbleBorder: "#1f5678",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#16384f", inputText: "#dff3f8", inputBorder: "#2c6a8a",
+      accent: "#5fc6e8", accentText: "#0a2434",
+      border: "#16384f",
+      chipBg: "#16384f", chipText: "#bfe6f2", chipBorder: "#2c6a8a",
+    },
+  },
+  mascot: { light: imgNilou, dark: imgNilou },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
