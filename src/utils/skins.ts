@@ -70,6 +70,7 @@ const imgKokomi = new URL("../assets/skins/genshin-kokomi.jpg", import.meta.url)
 const imgAyaka = new URL("../assets/skins/genshin-ayaka.jpg", import.meta.url).href;
 const imgYoimiya = new URL("../assets/skins/genshin-yoimiya.png", import.meta.url).href;
 const imgShogun = new URL("../assets/skins/genshin-shogun.png", import.meta.url).href;
+const imgNahida = new URL("../assets/skins/genshin-nahida.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -481,7 +482,51 @@ const shogunSkin: SkinDefinition = {
   mascot: { light: imgShogun, dark: imgShogun },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin];
+/**
+ * 纳西妲·心景幻成风格 —— 源自 Genshen-Nahida-Skin
+ * 调色板直接取自壁纸原色：净善夜青（#12271d/#0c1c14）为整个编辑器底色，
+ * 瓷白（#f5f8ec）、森之青绿（#4c9e48）、金光（#e8c860）点缀
+ */
+const nahidaSkin: SkinDefinition = {
+  id: "genshin-nahida",
+  name: "纳西妲 · 心景幻成",
+  source: "https://github.com/WPH666-py/Genshen-Nahida-Skin",
+  builtin: true,
+  description: "心景幻成：森青瓷白与金光，暗色为净善夜青（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f5f8ec", bgText: "#1f3a24",
+      sidebarBg: "#e9f0dd", sidebarText: "#4d7048", sidebarHover: "#dcebc9", sidebarSelected: "#d9ecb5", sidebarHeader: "#7d9a68",
+      editorBg: "#f5f8ec",
+      tabsBg: "#e9f0de", tabBg: "#e9f0dd", tabText: "#7d9a68", tabActiveBg: "#f5f8ec", tabActiveText: "#1f3a24",
+      aiBg: "#f0f5e8", aiText: "#1f3a24", aiTabText: "#7d9a68",
+      userBubbleBg: "#d9ecc0", userBubbleText: "#1f3a24",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#1f3a24", aiBubbleBorder: "#c9e0ad",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#1f3a24", inputBorder: "#b4d398",
+      accent: "#4a9e46", accentText: "#ffffff",
+      border: "#dcebc9",
+      chipBg: "#e3f3c8", chipText: "#4a6a3a", chipBorder: "#b9d69a",
+    },
+    dark: {
+      bg: "#12271d", bgText: "#eefad8",
+      sidebarBg: "#0c1c14", sidebarText: "#9ec79a", sidebarHover: "#1b3a28", sidebarSelected: "#2d5c3a", sidebarHeader: "#6d8f6a",
+      editorBg: "#12271d",
+      tabsBg: "#0c1c14", tabBg: "#12271d", tabText: "#6d8f6a", tabActiveBg: "#1b3a28", tabActiveText: "#eefad8",
+      aiBg: "#0c1c14", aiText: "#e6f4d8", aiTabText: "#6d8f6a",
+      userBubbleBg: "#2d5c3a", userBubbleText: "#f2fbe4",
+      aiBubbleBg: "#1b3a28", aiBubbleText: "#e6f4d8", aiBubbleBorder: "#2d5c3a",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#1b3a28", inputText: "#e6f4d8", inputBorder: "#3a6b48",
+      accent: "#e8c860", accentText: "#2a1f10",
+      border: "#24402e",
+      chipBg: "#224532", chipText: "#d8f0b8", chipBorder: "#3a6b48",
+    },
+  },
+  mascot: { light: imgNahida, dark: imgNahida },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
