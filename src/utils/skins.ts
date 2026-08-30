@@ -76,6 +76,7 @@ const imgCollei = new URL("../assets/skins/genshin-collei.png", import.meta.url)
 const imgNoelle = new URL("../assets/skins/genshin-noelle.png", import.meta.url).href;
 const imgBarbara = new URL("../assets/skins/genshin-barbara.png", import.meta.url).href;
 const imgAmbor = new URL("../assets/skins/genshin-ambor.png", import.meta.url).href;
+const imgYelan = new URL("../assets/skins/genshin-yelan.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -751,7 +752,51 @@ const amborSkin: SkinDefinition = {
   mascot: { light: imgAmbor, dark: imgAmbor },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin];
+/**
+ * 夜兰·玄掷玲珑风格 —— 源自 Genshen-Yelan-Skin
+ * 调色板直接取自壁纸原色：深海夜蓝（#0a1a30/#071220）为整个编辑器底色，
+ * 玄青蓝白（#eaf4f8）、碧水光（#3fd4f0）、金（#c8a052）点缀
+ */
+const yelanSkin: SkinDefinition = {
+  id: "genshin-yelan",
+  name: "夜兰 · 玄掷玲珑",
+  source: "https://github.com/WPH666-py/Genshen-Yelan-Skin",
+  builtin: true,
+  description: "玄掷玲珑：玄青蓝白与碧水光，暗色为深海夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#eaf4f8", bgText: "#16324a",
+      sidebarBg: "#d9e9f0", sidebarText: "#2c6a88", sidebarHover: "#c9e0ea", sidebarSelected: "#aed8e8", sidebarHeader: "#5f8ca0",
+      editorBg: "#eaf4f8",
+      tabsBg: "#d9e9f0", tabBg: "#d9e9f0", tabText: "#5f8096", tabActiveBg: "#eaf4f8", tabActiveText: "#16324a",
+      aiBg: "#e2f0f5", aiText: "#16324a", aiTabText: "#5f8096",
+      userBubbleBg: "#bfe4f0", userBubbleText: "#16324a",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#16324a", aiBubbleBorder: "#93c4d8",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#16324a", inputBorder: "#87b8cc",
+      accent: "#1f7fd4", accentText: "#ffffff",
+      border: "#c9e0ea",
+      chipBg: "#c4e6f2", chipText: "#2c6a88", chipBorder: "#87b8cc",
+    },
+    dark: {
+      bg: "#0a1a30", bgText: "#d8f2fa",
+      sidebarBg: "#071220", sidebarText: "#8ab0c4", sidebarHover: "#13283e", sidebarSelected: "#1f4460", sidebarHeader: "#5f7a90",
+      editorBg: "#0a1a30",
+      tabsBg: "#071220", tabBg: "#0a1a30", tabText: "#5f7a90", tabActiveBg: "#13283e", tabActiveText: "#d8f2fa",
+      aiBg: "#071220", aiText: "#d2ecf5", aiTabText: "#5f7a90",
+      userBubbleBg: "#1f4460", userBubbleText: "#e8f7fc",
+      aiBubbleBg: "#13283e", aiBubbleText: "#d2ecf5", aiBubbleBorder: "#1f4460",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#13283e", inputText: "#d2ecf5", inputBorder: "#2c5a78",
+      accent: "#3fd4f0", accentText: "#06121e",
+      border: "#13283e",
+      chipBg: "#13283e", chipText: "#a8e8f5", chipBorder: "#2c5a78",
+    },
+  },
+  mascot: { light: imgYelan, dark: imgYelan },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
