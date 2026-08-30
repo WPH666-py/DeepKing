@@ -72,6 +72,7 @@ const imgYoimiya = new URL("../assets/skins/genshin-yoimiya.png", import.meta.ur
 const imgShogun = new URL("../assets/skins/genshin-shogun.png", import.meta.url).href;
 const imgNahida = new URL("../assets/skins/genshin-nahida.png", import.meta.url).href;
 const imgNilou = new URL("../assets/skins/genshin-nilou.png", import.meta.url).href;
+const imgCollei = new URL("../assets/skins/genshin-collei.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -571,7 +572,51 @@ const nilouSkin: SkinDefinition = {
   mascot: { light: imgNilou, dark: imgNilou },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin];
+/**
+ * 柯莱·猫猫秘宝风格 —— 源自 Genshen-Collei-Skin
+ * 调色板直接取自壁纸原色：林间夜青（#122418/#0c1a12）为整个编辑器底色，
+ * 瓷白（#f5f7ee）、森之新绿（#62a83e）、金饰（#d8b360）点缀
+ */
+const colleiSkin: SkinDefinition = {
+  id: "genshin-collei",
+  name: "柯莱 · 猫猫秘宝",
+  source: "https://github.com/WPH666-py/Genshen-Collei-Skin",
+  builtin: true,
+  description: "猫猫秘宝：森青瓷白与金饰，暗色为林间夜青（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f5f7ee", bgText: "#24331f",
+      sidebarBg: "#e6eed8", sidebarText: "#4f6b3f", sidebarHover: "#d8e8c2", sidebarSelected: "#cde2b4", sidebarHeader: "#7f9a68",
+      editorBg: "#f5f7ee",
+      tabsBg: "#e6eed8", tabBg: "#e6eed8", tabText: "#6f8f68", tabActiveBg: "#f5f7ee", tabActiveText: "#24331f",
+      aiBg: "#f1f5e8", aiText: "#24331f", aiTabText: "#6f8f68",
+      userBubbleBg: "#d5e8bd", userBubbleText: "#24331f",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#24331f", aiBubbleBorder: "#c2dba6",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#24331f", inputBorder: "#a9cc8e",
+      accent: "#62a83e", accentText: "#ffffff",
+      border: "#d8e8c2",
+      chipBg: "#e2f0cf", chipText: "#55703f", chipBorder: "#a9cc8e",
+    },
+    dark: {
+      bg: "#122418", bgText: "#e8f4d8",
+      sidebarBg: "#0c1a12", sidebarText: "#9cc08a", sidebarHover: "#1a3424", sidebarSelected: "#2a4f38", sidebarHeader: "#6f8f68",
+      editorBg: "#122418",
+      tabsBg: "#0c1a12", tabBg: "#122418", tabText: "#6f8f68", tabActiveBg: "#1a3424", tabActiveText: "#e8f4d8",
+      aiBg: "#0c1a12", aiText: "#e2f0ce", aiTabText: "#6f8f68",
+      userBubbleBg: "#2a4f38", userBubbleText: "#f0fae2",
+      aiBubbleBg: "#1a3424", aiBubbleText: "#e2f0ce", aiBubbleBorder: "#2a4f38",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#1a3424", inputText: "#e2f0ce", inputBorder: "#3a6b48",
+      accent: "#d8b360", accentText: "#241a08",
+      border: "#2a4f38",
+      chipBg: "#1d3a28", chipText: "#cfe4b8", chipBorder: "#3a6b48",
+    },
+  },
+  mascot: { light: imgCollei, dark: imgCollei },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
