@@ -74,6 +74,7 @@ const imgNahida = new URL("../assets/skins/genshin-nahida.png", import.meta.url)
 const imgNilou = new URL("../assets/skins/genshin-nilou.png", import.meta.url).href;
 const imgCollei = new URL("../assets/skins/genshin-collei.png", import.meta.url).href;
 const imgNoelle = new URL("../assets/skins/genshin-noelle.png", import.meta.url).href;
+const imgBarbara = new URL("../assets/skins/genshin-barbara.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -661,7 +662,51 @@ const noelleSkin: SkinDefinition = {
   mascot: { light: imgNoelle, dark: imgNoelle },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin];
+/**
+ * 芭芭拉·闪耀奇迹风格 —— 源自 Genshen-Barbara-Skin
+ * 调色板直接取自壁纸原色：澄水夜蓝（#12283c/#0c1c2c）为整个编辑器底色，
+ * 瓷白（#f6fafb）、水之湛蓝（#4a90d8）、浅金（#e0b368）点缀
+ */
+const barbaraSkin: SkinDefinition = {
+  id: "genshin-barbara",
+  name: "芭芭拉 · 闪耀奇迹",
+  source: "https://github.com/WPH666-py/Genshen-Barbara-Skin",
+  builtin: true,
+  description: "闪耀奇迹：水蓝瓷白与浅金，暗色为澄水夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f6fafb", bgText: "#1d4a68",
+      sidebarBg: "#e3f0f5", sidebarText: "#2d6a8a", sidebarHover: "#d0e8f0", sidebarSelected: "#bfe0ee", sidebarHeader: "#6fa0b8",
+      editorBg: "#f6fafb",
+      tabsBg: "#e3f0f5", tabBg: "#e3f0f5", tabText: "#6d90a8", tabActiveBg: "#f6fafb", tabActiveText: "#1d4a68",
+      aiBg: "#eef5f9", aiText: "#1d4a68", aiTabText: "#6d90a8",
+      userBubbleBg: "#cfe6f2", userBubbleText: "#1d4a68",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#1d4a68", aiBubbleBorder: "#b8d8e8",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#1d4a68", inputBorder: "#a5cce0",
+      accent: "#4a90d8", accentText: "#ffffff",
+      border: "#d0e8f0",
+      chipBg: "#dcecf5", chipText: "#2d6a8a", chipBorder: "#a5cce0",
+    },
+    dark: {
+      bg: "#12283c", bgText: "#e4f4fb",
+      sidebarBg: "#0c1c2c", sidebarText: "#9cc4d8", sidebarHover: "#1c3a52", sidebarSelected: "#2a5a7c", sidebarHeader: "#6d90a8",
+      editorBg: "#12283c",
+      tabsBg: "#0c1c2c", tabBg: "#12283c", tabText: "#6d90a8", tabActiveBg: "#1c3a52", tabActiveText: "#e4f4fb",
+      aiBg: "#0c1c2c", aiText: "#e0f0f8", aiTabText: "#6d90a8",
+      userBubbleBg: "#2a5a7c", userBubbleText: "#f0f8fc",
+      aiBubbleBg: "#1c3a52", aiBubbleText: "#e0f0f8", aiBubbleBorder: "#2a5a7c",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#1c3a52", inputText: "#e0f0f8", inputBorder: "#2a5a7c",
+      accent: "#5fc6e8", accentText: "#0a2434",
+      border: "#1c3a52",
+      chipBg: "#1c3a52", chipText: "#c4e6f2", chipBorder: "#2a5a7c",
+    },
+  },
+  mascot: { light: imgBarbara, dark: imgBarbara },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
