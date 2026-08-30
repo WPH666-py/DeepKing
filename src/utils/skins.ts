@@ -86,6 +86,7 @@ const imgNavia = new URL("../assets/skins/genshin-navia.png", import.meta.url).h
 const imgMualani = new URL("../assets/skins/genshin-mualani.png", import.meta.url).href;
 const imgSandrone = new URL("../assets/skins/genshin-sandrone.png", import.meta.url).href;
 const imgClorinde = new URL("../assets/skins/genshin-clorinde.png", import.meta.url).href;
+const imgNicole = new URL("../assets/skins/genshin-nicole.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -1201,7 +1202,51 @@ const clorindeSkin: SkinDefinition = {
   mascot: { light: imgClorinde, dark: imgClorinde },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin, escoffierSkin, naviaSkin, mualaniSkin, sandroneSkin, clorindeSkin];
+/**
+ * 尼可·圣言默示天路历程风格 —— 源自 Genshen-Nicole-Skin
+ * 调色板直接取自壁纸原色：星辉夜蓝（#101c36/#0a1224）为整个编辑器底色，
+ * 雪蓝瓷白（#f8fafe）、圣蓝（#4a8fd8）、鎏金（#e0b350）点缀
+ */
+const nicoleSkin: SkinDefinition = {
+  id: "genshin-nicole",
+  name: "尼可 · 圣言默示天路历程",
+  source: "https://github.com/WPH666-py/Genshen-Nicole-Skin",
+  builtin: true,
+  description: "圣言默示天路历程：雪蓝瓷白与鎏金，暗色为星辉夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f8fafe", bgText: "#21456e",
+      sidebarBg: "#e6eef8", sidebarText: "#2d6a8a", sidebarHover: "#d4e2f2", sidebarSelected: "#b8d4ec", sidebarHeader: "#6f93b8",
+      editorBg: "#f8fafe",
+      tabsBg: "#e6eef8", tabBg: "#e6eef8", tabText: "#7a94b8", tabActiveBg: "#f8fafe", tabActiveText: "#21456e",
+      aiBg: "#eef4fc", aiText: "#21456e", aiTabText: "#7a94b8",
+      userBubbleBg: "#d6eaf8", userBubbleText: "#21456e",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#21456e", aiBubbleBorder: "#a8c8e0",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#21456e", inputBorder: "#a8c8e0",
+      accent: "#4a8fd8", accentText: "#ffffff",
+      border: "#d4e2f2",
+      chipBg: "#dceaf6", chipText: "#2d6a8a", chipBorder: "#a8c8e0",
+    },
+    dark: {
+      bg: "#101c36", bgText: "#e0e8fa",
+      sidebarBg: "#0a1224", sidebarText: "#9cb8d0", sidebarHover: "#1c2c4e", sidebarSelected: "#2a4070", sidebarHeader: "#7a94b8",
+      editorBg: "#101c36",
+      tabsBg: "#0a1224", tabBg: "#101c36", tabText: "#7a94b8", tabActiveBg: "#1c2c4e", tabActiveText: "#e0e8fa",
+      aiBg: "#0a1224", aiText: "#dce8fa", aiTabText: "#7a94b8",
+      userBubbleBg: "#2a4070", userBubbleText: "#eef4fd",
+      aiBubbleBg: "#1c2c4e", aiBubbleText: "#dce8fa", aiBubbleBorder: "#2a4070",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#1c2c4e", inputText: "#dce8fa", inputBorder: "#3d5a88",
+      accent: "#6fb8f0", accentText: "#0a1a30",
+      border: "#1c2c4e",
+      chipBg: "#1c2c4e", chipText: "#bcd8f0", chipBorder: "#3d5a88",
+    },
+  },
+  mascot: { light: imgNicole, dark: imgNicole },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin, escoffierSkin, naviaSkin, mualaniSkin, sandroneSkin, clorindeSkin, nicoleSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
