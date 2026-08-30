@@ -79,6 +79,7 @@ const imgAmbor = new URL("../assets/skins/genshin-ambor.png", import.meta.url).h
 const imgYelan = new URL("../assets/skins/genshin-yelan.png", import.meta.url).href;
 const imgZibai = new URL("../assets/skins/genshin-zibai.png", import.meta.url).href;
 const imgGanyu = new URL("../assets/skins/genshin-ganyu.png", import.meta.url).href;
+const imgColumbina = new URL("../assets/skins/genshin-columbina.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -886,7 +887,51 @@ const ganyuSkin: SkinDefinition = {
   mascot: { light: imgGanyu, dark: imgGanyu },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin];
+/**
+ * 哥伦比娅·她的乡愁风格 —— 源自 Genshen-Columbina-Skin
+ * 调色板直接取自壁纸原色：月蚀夜紫（#1e1638/#150f28）为整个编辑器底色，
+ * 月白鸢尾（#f4f2fa）、靛紫（#7a5fd8）、月光蓝（#8fa8e8）点缀
+ */
+const columbinaSkin: SkinDefinition = {
+  id: "genshin-columbina",
+  name: "哥伦比娅 · 她的乡愁",
+  source: "https://github.com/WPH666-py/Genshen-Columbina-Skin",
+  builtin: true,
+  description: "她的乡愁：月白鸢尾与靛紫，暗色为月蚀夜紫（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f4f2fa", bgText: "#3a2a52",
+      sidebarBg: "#e9e6f5", sidebarText: "#5a4a8a", sidebarHover: "#dbd6ee", sidebarSelected: "#c8bfe8", sidebarHeader: "#8a80b0",
+      editorBg: "#f4f2fa",
+      tabsBg: "#e9e6f5", tabBg: "#e9e6f5", tabText: "#8a80b0", tabActiveBg: "#f4f2fa", tabActiveText: "#3a2a52",
+      aiBg: "#efeaf9", aiText: "#3a2a52", aiTabText: "#8a80b0",
+      userBubbleBg: "#e0d8f5", userBubbleText: "#3a2a52",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#3a2a52", aiBubbleBorder: "#b8b0d8",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#3a2a52", inputBorder: "#b8b0d8",
+      accent: "#7a5fd8", accentText: "#ffffff",
+      border: "#dbd6ee",
+      chipBg: "#e8e2f8", chipText: "#5a4a8a", chipBorder: "#b8b0d8",
+    },
+    dark: {
+      bg: "#1e1638", bgText: "#eef2fa",
+      sidebarBg: "#150f28", sidebarText: "#b2a8d0", sidebarHover: "#2a2050", sidebarSelected: "#3a2e6e", sidebarHeader: "#8a80b0",
+      editorBg: "#1e1638",
+      tabsBg: "#150f28", tabBg: "#1e1638", tabText: "#8a80b0", tabActiveBg: "#2a2050", tabActiveText: "#eef2fa",
+      aiBg: "#150f28", aiText: "#e4e2f6", aiTabText: "#8a80b0",
+      userBubbleBg: "#3a2e6e", userBubbleText: "#f4f2fd",
+      aiBubbleBg: "#2a2050", aiBubbleText: "#e4e2f6", aiBubbleBorder: "#3a2e6e",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#2a2050", inputText: "#e4e2f6", inputBorder: "#5a4a9e",
+      accent: "#b48cf0", accentText: "#1a1030",
+      border: "#2a2050",
+      chipBg: "#2a2050", chipText: "#d8ccf0", chipBorder: "#5a4a9e",
+    },
+  },
+  mascot: { light: imgColumbina, dark: imgColumbina },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
