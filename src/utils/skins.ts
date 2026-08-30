@@ -73,6 +73,7 @@ const imgShogun = new URL("../assets/skins/genshin-shogun.png", import.meta.url)
 const imgNahida = new URL("../assets/skins/genshin-nahida.png", import.meta.url).href;
 const imgNilou = new URL("../assets/skins/genshin-nilou.png", import.meta.url).href;
 const imgCollei = new URL("../assets/skins/genshin-collei.png", import.meta.url).href;
+const imgNoelle = new URL("../assets/skins/genshin-noelle.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -616,7 +617,51 @@ const colleiSkin: SkinDefinition = {
   mascot: { light: imgCollei, dark: imgCollei },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin];
+/**
+ * 诺艾尔·大扫除风格 —— 源自 Genshen-Noelle-Skin
+ * 调色板直接取自壁纸原色：玫瑰夜红（#2a1220/#1e0c17）为整个编辑器底色，
+ * 蔷薇粉白（#faf4f6）、骑士银（#9aa4b8）、金饰（#e8c052）点缀
+ */
+const noelleSkin: SkinDefinition = {
+  id: "genshin-noelle",
+  name: "诺艾尔 · 大扫除",
+  source: "https://github.com/WPH666-py/Genshen-Noelle-Skin",
+  builtin: true,
+  description: "大扫除：蔷薇粉白与骑士银，暗色为玫瑰夜红（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#faf4f6", bgText: "#4a2230",
+      sidebarBg: "#f2e8ec", sidebarText: "#8a5a68", sidebarHover: "#e8dae0", sidebarSelected: "#f2cdd8", sidebarHeader: "#98767f",
+      editorBg: "#faf4f6",
+      tabsBg: "#f2e8ec", tabBg: "#f2e8ec", tabText: "#98767f", tabActiveBg: "#faf4f6", tabActiveText: "#4a2230",
+      aiBg: "#f7eff2", aiText: "#4a2230", aiTabText: "#98767f",
+      userBubbleBg: "#f6dae3", userBubbleText: "#4a2230",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#4a2230", aiBubbleBorder: "#e5c2cd",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#4a2230", inputBorder: "#d0a8b8",
+      accent: "#c94060", accentText: "#ffffff",
+      border: "#e8dae0",
+      chipBg: "#f8e0e8", chipText: "#8a4054", chipBorder: "#d0a8b8",
+    },
+    dark: {
+      bg: "#2a1220", bgText: "#fae8f0",
+      sidebarBg: "#1e0c17", sidebarText: "#c0aeb8", sidebarHover: "#3a1a2c", sidebarSelected: "#4a2440", sidebarHeader: "#8f7a88",
+      editorBg: "#2a1220",
+      tabsBg: "#1e0c17", tabBg: "#2a1220", tabText: "#8f7a88", tabActiveBg: "#3a1a2c", tabActiveText: "#fae8f0",
+      aiBg: "#1e0c17", aiText: "#f5e4ec", aiTabText: "#8f7a88",
+      userBubbleBg: "#4a2440", userBubbleText: "#faf0f5",
+      aiBubbleBg: "#3a1a2c", aiBubbleText: "#f5e4ec", aiBubbleBorder: "#4a2440",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#3a1a2c", inputText: "#f5e4ec", inputBorder: "#5a3a4c",
+      accent: "#e8c052", accentText: "#2a1018",
+      border: "#3a1a2c",
+      chipBg: "#33202c", chipText: "#ffd6e4", chipBorder: "#5a3a4c",
+    },
+  },
+  mascot: { light: imgNoelle, dark: imgNoelle },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
