@@ -81,6 +81,7 @@ const imgZibai = new URL("../assets/skins/genshin-zibai.png", import.meta.url).h
 const imgGanyu = new URL("../assets/skins/genshin-ganyu.png", import.meta.url).href;
 const imgColumbina = new URL("../assets/skins/genshin-columbina.png", import.meta.url).href;
 const imgLinnea = new URL("../assets/skins/genshin-linnea.png", import.meta.url).href;
+const imgEscoffier = new URL("../assets/skins/genshin-escoffier.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -976,7 +977,51 @@ const linneaSkin: SkinDefinition = {
   mascot: { light: imgLinnea, dark: imgLinnea },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin];
+/**
+ * 爱可菲·花刀技法风格 —— 源自 Genshen-Escoffier-Skin
+ * 调色板直接取自壁纸原色：蓝莓夜蓝（#10242e/#0a1a22）为整个编辑器底色，
+ * 奶油瓷白（#fbfaf4）、冰蓝（#3fb8e0）、樱红（#d94a68）点缀
+ */
+const escoffierSkin: SkinDefinition = {
+  id: "genshin-escoffier",
+  name: "爱可菲 · 花刀技法",
+  source: "https://github.com/WPH666-py/Genshen-Escoffier-Skin",
+  builtin: true,
+  description: "花刀技法：奶油瓷白与冰蓝，暗色为蓝莓夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#fbfaf4", bgText: "#1d4a5e",
+      sidebarBg: "#e8f2f4", sidebarText: "#2d6a8a", sidebarHover: "#d3e8ee", sidebarSelected: "#b8dce8", sidebarHeader: "#6f9ab0",
+      editorBg: "#fbfaf4",
+      tabsBg: "#e8f2f4", tabBg: "#e8f2f4", tabText: "#6f92a0", tabActiveBg: "#fbfaf4", tabActiveText: "#1d4a5e",
+      aiBg: "#f0f6f8", aiText: "#1d4a5e", aiTabText: "#6f92a0",
+      userBubbleBg: "#cfe8f2", userBubbleText: "#1d4a5e",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#1d4a5e", aiBubbleBorder: "#a5d4e0",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#1d4a5e", inputBorder: "#a5d4e0",
+      accent: "#3fb8e0", accentText: "#ffffff",
+      border: "#d3e8ee",
+      chipBg: "#e0f0f4", chipText: "#2d6a8a", chipBorder: "#a5d4e0",
+    },
+    dark: {
+      bg: "#10242e", bgText: "#e0f4fa",
+      sidebarBg: "#0a1a22", sidebarText: "#9cc2d0", sidebarHover: "#1a3a48", sidebarSelected: "#2a5468", sidebarHeader: "#6f92a0",
+      editorBg: "#10242e",
+      tabsBg: "#0a1a22", tabBg: "#10242e", tabText: "#6f92a0", tabActiveBg: "#1a3a48", tabActiveText: "#e0f4fa",
+      aiBg: "#0a1a22", aiText: "#dceff8", aiTabText: "#6f92a0",
+      userBubbleBg: "#2a5468", userBubbleText: "#eef8fc",
+      aiBubbleBg: "#1a3a48", aiBubbleText: "#dceff8", aiBubbleBorder: "#2a5468",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#1a3a48", inputText: "#dceff8", inputBorder: "#3a6a80",
+      accent: "#5fd0f0", accentText: "#0a2434",
+      border: "#1a3a48",
+      chipBg: "#1a3a48", chipText: "#c4e8f2", chipBorder: "#3a6a80",
+    },
+  },
+  mascot: { light: imgEscoffier, dark: imgEscoffier },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin, escoffierSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
