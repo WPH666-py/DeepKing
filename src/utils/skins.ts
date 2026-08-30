@@ -69,6 +69,7 @@ const imgKeqing = new URL("../assets/skins/genshin-keqing.png", import.meta.url)
 const imgKokomi = new URL("../assets/skins/genshin-kokomi.jpg", import.meta.url).href;
 const imgAyaka = new URL("../assets/skins/genshin-ayaka.jpg", import.meta.url).href;
 const imgYoimiya = new URL("../assets/skins/genshin-yoimiya.png", import.meta.url).href;
+const imgShogun = new URL("../assets/skins/genshin-shogun.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -436,7 +437,51 @@ const yoimiyaSkin: SkinDefinition = {
   mascot: { light: imgYoimiya, dark: imgYoimiya },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin];
+/**
+ * 雷电将军·奥义梦想真说风格 —— 源自 Genshen-Shogun-Skin
+ * 调色板直接取自壁纸原色：求道夜紫（#1e1a3e/#151130）为整个编辑器底色，
+ * 瓷白（#f6f2f7）、电紫（#7a5ad8）、樱粉雷光（#b48cf0）点缀
+ */
+const shogunSkin: SkinDefinition = {
+  id: "genshin-shogun",
+  name: "雷电将军 · 奥义梦想真说",
+  source: "https://github.com/WPH666-py/Genshen-Shogun-Skin",
+  builtin: true,
+  description: "奥义梦想真说：电紫瓷白与樱粉雷光，暗色为求道夜紫（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f6f2f7", bgText: "#2c2050",
+      sidebarBg: "#edeaf5", sidebarText: "#5a4a86", sidebarHover: "#e2ddf0", sidebarSelected: "#f3d7e0", sidebarHeader: "#8a82a8",
+      editorBg: "#f6f2f7",
+      tabsBg: "#eae6f3", tabBg: "#edeaf5", tabText: "#7a6f9a", tabActiveBg: "#f6f2f7", tabActiveText: "#2c2050",
+      aiBg: "#f1edf7", aiText: "#2c2050", aiTabText: "#7a6f9a",
+      userBubbleBg: "#d9dcf5", userBubbleText: "#2c2050",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#2c2050", aiBubbleBorder: "#ccd3ee",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#2c2050", inputBorder: "#b9c0e8",
+      accent: "#7a5ad8", accentText: "#ffffff",
+      border: "#e2def0",
+      chipBg: "#f3dbe6", chipText: "#8a4a6a", chipBorder: "#dfb8c8",
+    },
+    dark: {
+      bg: "#1e1a3e", bgText: "#efe9ff",
+      sidebarBg: "#151130", sidebarText: "#a89ad8", sidebarHover: "#2b2452", sidebarSelected: "#4a3d8e", sidebarHeader: "#6f68a0",
+      editorBg: "#1e1a3e",
+      tabsBg: "#151130", tabBg: "#1e1a3e", tabText: "#6f68a0", tabActiveBg: "#2b2452", tabActiveText: "#efe9ff",
+      aiBg: "#151130", aiText: "#eae4ff", aiTabText: "#6f68a0",
+      userBubbleBg: "#4a3d8e", userBubbleText: "#f4f0ff",
+      aiBubbleBg: "#2b2452", aiBubbleText: "#eae4ff", aiBubbleBorder: "#4a3d8e",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#2b2452", inputText: "#eae4ff", inputBorder: "#5a4d9e",
+      accent: "#b48cf0", accentText: "#1a1030",
+      border: "#322a5e",
+      chipBg: "#352a66", chipText: "#d8c8ff", chipBorder: "#5a4d9e",
+    },
+  },
+  mascot: { light: imgShogun, dark: imgShogun },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
