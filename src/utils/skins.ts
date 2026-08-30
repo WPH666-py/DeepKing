@@ -83,6 +83,7 @@ const imgColumbina = new URL("../assets/skins/genshin-columbina.png", import.met
 const imgLinnea = new URL("../assets/skins/genshin-linnea.png", import.meta.url).href;
 const imgEscoffier = new URL("../assets/skins/genshin-escoffier.png", import.meta.url).href;
 const imgNavia = new URL("../assets/skins/genshin-navia.png", import.meta.url).href;
+const imgMualani = new URL("../assets/skins/genshin-mualani.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -1066,7 +1067,51 @@ const naviaSkin: SkinDefinition = {
   mascot: { light: imgNavia, dark: imgNavia },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin, escoffierSkin, naviaSkin];
+/**
+ * 玛拉妮·爆瀑飞弹风格 —— 源自 Genshen-Mualani-Skin
+ * 调色板直接取自壁纸原色：深浪夜蓝（#0e2a3e/#0a1f2e）为整个编辑器底色，
+ * 海蓝瓷白（#f4f9fb）、浪花白（#ffffff）、鲨金（#e0b350）点缀
+ */
+const mualaniSkin: SkinDefinition = {
+  id: "genshin-mualani",
+  name: "玛拉妮 · 爆瀑飞弹",
+  source: "https://github.com/WPH666-py/Genshen-Mualani-Skin",
+  builtin: true,
+  description: "爆瀑飞弹：海蓝瓷白与浪花，暗色为深浪夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#f4f9fb", bgText: "#14506e",
+      sidebarBg: "#e1eef4", sidebarText: "#2d6a8a", sidebarHover: "#d0e6f0", sidebarSelected: "#b8dcec", sidebarHeader: "#6d94a8",
+      editorBg: "#f4f9fb",
+      tabsBg: "#e1eef4", tabBg: "#e1eef4", tabText: "#6d93a8", tabActiveBg: "#f4f9fb", tabActiveText: "#14506e",
+      aiBg: "#ecf5f9", aiText: "#14506e", aiTabText: "#6d93a8",
+      userBubbleBg: "#cce4f0", userBubbleText: "#14506e",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#14506e", aiBubbleBorder: "#a5ccdc",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#14506e", inputBorder: "#a5ccdc",
+      accent: "#2f9fd8", accentText: "#ffffff",
+      border: "#d0e6f0",
+      chipBg: "#dcecf4", chipText: "#2d6a8a", chipBorder: "#a5ccdc",
+    },
+    dark: {
+      bg: "#0e2a3e", bgText: "#e0f4fb",
+      sidebarBg: "#0a1f2e", sidebarText: "#9cc4d8", sidebarHover: "#16384f", sidebarSelected: "#1f5678", sidebarHeader: "#6d93a8",
+      editorBg: "#0e2a3e",
+      tabsBg: "#0a1f2e", tabBg: "#0e2a3e", tabText: "#6d93a8", tabActiveBg: "#16384f", tabActiveText: "#e0f4fb",
+      aiBg: "#0a1f2e", aiText: "#dceff8", aiTabText: "#6d93a8",
+      userBubbleBg: "#1f5678", userBubbleText: "#eef8fc",
+      aiBubbleBg: "#16384f", aiBubbleText: "#dceff8", aiBubbleBorder: "#1f5678",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#16384f", inputText: "#dceff8", inputBorder: "#2c6a8a",
+      accent: "#5fc6e8", accentText: "#0a2434",
+      border: "#16384f",
+      chipBg: "#16384f", chipText: "#c4e8f2", chipBorder: "#2c6a8a",
+    },
+  },
+  mascot: { light: imgMualani, dark: imgMualani },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin, escoffierSkin, naviaSkin, mualaniSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
