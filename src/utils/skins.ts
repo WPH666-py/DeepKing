@@ -66,6 +66,8 @@ const imgAds = new URL("../assets/skins/whale-ads.webp", import.meta.url).href;
 const imgFurina = new URL("../assets/skins/genshin-furina.png", import.meta.url).href;
 const imgCitlali = new URL("../assets/skins/genshin-citlali.png", import.meta.url).href;
 const imgKeqing = new URL("../assets/skins/genshin-keqing.png", import.meta.url).href;
+const imgKokomi = new URL("../assets/skins/genshin-kokomi.jpg", import.meta.url).href;
+const imgAyaka = new URL("../assets/skins/genshin-ayaka.jpg", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -301,7 +303,95 @@ const keqingSkin: SkinDefinition = {
   mascot: { light: imgKeqing, dark: imgKeqing },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin];
+/**
+ * 心海·海月之誓风格 —— 源自 Genshen-Kokomi-Skin
+ * 调色板直接取自壁纸原色：渊海夜蓝（#0a1a33/#071324）为整个编辑器底色，
+ * 瓷白（#fefefd）、波光粉金（#f2bca4/#a58947）、海蓝（#265682）点缀
+ */
+const kokomiSkin: SkinDefinition = {
+  id: "genshin-kokomi",
+  name: "心海 · 海月之誓",
+  source: "https://github.com/WPH666-py/Genshen-Kokomi-Skin",
+  builtin: true,
+  description: "海月之誓：海蓝瓷白与波光粉紫，暗色为渊海夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#faf7f2", bgText: "#16324d",
+      sidebarBg: "#eef3f8", sidebarText: "#2a5a7d", sidebarHover: "#e3ecf4", sidebarSelected: "#f3dcd3", sidebarHeader: "#7a8a99",
+      editorBg: "#faf7f2",
+      tabsBg: "#eef2f6", tabBg: "#eef3f8", tabText: "#56687a", tabActiveBg: "#faf7f2", tabActiveText: "#16324d",
+      aiBg: "#f4f6f9", aiText: "#16324d", aiTabText: "#5f7488",
+      userBubbleBg: "#d9e7f5", userBubbleText: "#16324d",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#16324d", aiBubbleBorder: "#cfe0ef",
+      systemBubbleBg: "#fdf2e3", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#16324d", inputBorder: "#b8cfe2",
+      accent: "#3b8fd4", accentText: "#ffffff",
+      border: "#dbe6f0",
+      chipBg: "#f3e3d8", chipText: "#7a4a2a", chipBorder: "#e8c7ae",
+    },
+    dark: {
+      bg: "#0a1a33", bgText: "#eef0f2",
+      sidebarBg: "#071324", sidebarText: "#aeb3bd", sidebarHover: "#162439", sidebarSelected: "#1d3a5a", sidebarHeader: "#556577",
+      editorBg: "#0a1a33",
+      tabsBg: "#071324", tabBg: "#0a1a33", tabText: "#556577", tabActiveBg: "#162439", tabActiveText: "#fefefd",
+      aiBg: "#071324", aiText: "#e8eef5", aiTabText: "#556577",
+      userBubbleBg: "#265682", userBubbleText: "#fefefd",
+      aiBubbleBg: "#162439", aiBubbleText: "#eef4fa", aiBubbleBorder: "#265682",
+      systemBubbleBg: "#3a3018", systemBubbleText: "#e8d9a0",
+      inputBg: "#162439", inputText: "#eef4fa", inputBorder: "#364558",
+      accent: "#f2bca4", accentText: "#2a1a12",
+      border: "#1b2b43",
+      chipBg: "#1f3b5e", chipText: "#d9e6f2", chipBorder: "#3b4a64",
+    },
+  },
+  mascot: { light: imgKokomi, dark: imgKokomi },
+};
+
+/**
+ * 绫华·霜雪冰刃风格 —— 源自 Genshen-Ayaka-Skin
+ * 调色板直接取自壁纸原色：冰夜深蓝（#101b31/#0d1527）为整个编辑器底色，
+ * 瓷白（#fefefe）、樱粉（#c68792）、冰紫（#535596）点缀
+ */
+const ayakaSkin: SkinDefinition = {
+  id: "genshin-ayaka",
+  name: "绫华 · 霜雪冰刃",
+  source: "https://github.com/WPH666-py/Genshen-Ayaka-Skin",
+  builtin: true,
+  description: "霜雪冰刃：冰蓝瓷白与樱粉点缀，暗色为冰夜深蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#fafbfd", bgText: "#1c3355",
+      sidebarBg: "#eef2f9", sidebarText: "#39507a", sidebarHover: "#e2e9f4", sidebarSelected: "#fbdfe6", sidebarHeader: "#7a86a2",
+      editorBg: "#fafbfd",
+      tabsBg: "#edf1f8", tabBg: "#eef2f9", tabText: "#5a6a86", tabActiveBg: "#fafbfd", tabActiveText: "#1c3355",
+      aiBg: "#f4f6fb", aiText: "#1c3355", aiTabText: "#5f7090",
+      userBubbleBg: "#e0e9fa", userBubbleText: "#1c3355",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#1c3355", aiBubbleBorder: "#ccd9f0",
+      systemBubbleBg: "#fdf0f3", systemBubbleText: "#8a4a5a",
+      inputBg: "#ffffff", inputText: "#1c3355", inputBorder: "#b8c8e8",
+      accent: "#5a8fe0", accentText: "#ffffff",
+      border: "#dde6f2",
+      chipBg: "#fbe3ea", chipText: "#8a4a5a", chipBorder: "#dba8b8",
+    },
+    dark: {
+      bg: "#101b31", bgText: "#f2f4f8",
+      sidebarBg: "#0d1527", sidebarText: "#a7abb4", sidebarHover: "#182237", sidebarSelected: "#2c4d7d", sidebarHeader: "#555b6a",
+      editorBg: "#101b31",
+      tabsBg: "#0d1527", tabBg: "#101b31", tabText: "#555b6a", tabActiveBg: "#182237", tabActiveText: "#fefefe",
+      aiBg: "#0d1527", aiText: "#eef2f8", aiTabText: "#555b6a",
+      userBubbleBg: "#535596", userBubbleText: "#f2f4f8",
+      aiBubbleBg: "#182237", aiBubbleText: "#eef2f8", aiBubbleBorder: "#535596",
+      systemBubbleBg: "#3c2430", systemBubbleText: "#eab8c4",
+      inputBg: "#182237", inputText: "#eef2f8", inputBorder: "#3a4355",
+      accent: "#c68792", accentText: "#2a1014",
+      border: "#242c42",
+      chipBg: "#22304e", chipText: "#cfd9f0", chipBorder: "#475985",
+    },
+  },
+  mascot: { light: imgAyaka, dark: imgAyaka },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
