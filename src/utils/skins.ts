@@ -88,6 +88,7 @@ const imgSandrone = new URL("../assets/skins/genshin-sandrone.png", import.meta.
 const imgClorinde = new URL("../assets/skins/genshin-clorinde.png", import.meta.url).href;
 const imgNicole = new URL("../assets/skins/genshin-nicole.png", import.meta.url).href;
 const imgSucrose = new URL("../assets/skins/genshin-sucrose.png", import.meta.url).href;
+const imgEula = new URL("../assets/skins/genshin-eula.png", import.meta.url).href;
 
 /** 鲸鱼娘·常规风格 —— 源自 dsh-maid-whale-webUI「云鲸纸面」：纸白/云灰/淡天蓝 + 暮蓝暗色 */
 const whaleCloud: SkinDefinition = {
@@ -1291,7 +1292,51 @@ const sucroseSkin: SkinDefinition = {
   mascot: { light: imgSucrose, dark: imgSucrose },
 };
 
-export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin, escoffierSkin, naviaSkin, mualaniSkin, sandroneSkin, clorindeSkin, nicoleSkin, sucroseSkin];
+/**
+ * 优菈·凝浪之光剑风格 —— 源自 Genshen-Eula-Skin
+ * 调色板直接取自壁纸原色：霜雪夜蓝（#12243e/#0c1a2c）为整个编辑器底色，
+ * 冰蓝瓷白（#eff6fb）、冰之蓝（#5a90e0）、霜紫（#8a6ae8）点缀
+ */
+const eulaSkin: SkinDefinition = {
+  id: "genshin-eula",
+  name: "优菈 · 凝浪之光剑",
+  source: "https://github.com/WPH666-py/Genshen-Eula-Skin",
+  builtin: true,
+  description: "凝浪之光剑：冰蓝瓷白与霜紫，暗色为霜雪夜蓝（取壁纸原色）",
+  palettes: {
+    light: {
+      bg: "#eff6fb", bgText: "#1d3c62",
+      sidebarBg: "#dfeaf5", sidebarText: "#3d6a8a", sidebarHover: "#cfe0f0", sidebarSelected: "#b8d4ec", sidebarHeader: "#6f93ae",
+      editorBg: "#eff6fb",
+      tabsBg: "#dfeaf5", tabBg: "#dfeaf5", tabText: "#6f86a8", tabActiveBg: "#eff6fb", tabActiveText: "#1d3c62",
+      aiBg: "#e7f0f9", aiText: "#1d3c62", aiTabText: "#6f86a8",
+      userBubbleBg: "#cfe6f8", userBubbleText: "#1d3c62",
+      aiBubbleBg: "#ffffff", aiBubbleText: "#1d3c62", aiBubbleBorder: "#a5c8e0",
+      systemBubbleBg: "#fdf3e0", systemBubbleText: "#8a6414",
+      inputBg: "#ffffff", inputText: "#1d3c62", inputBorder: "#a5c4e0",
+      accent: "#5a90e0", accentText: "#ffffff",
+      border: "#cfe0f0",
+      chipBg: "#d9e8f5", chipText: "#3d6a8a", chipBorder: "#a5c4e0",
+    },
+    dark: {
+      bg: "#12243e", bgText: "#e0ecfa",
+      sidebarBg: "#0c1a2c", sidebarText: "#9cb8d0", sidebarHover: "#1a2a4c", sidebarSelected: "#2a4070", sidebarHeader: "#6f86a8",
+      editorBg: "#12243e",
+      tabsBg: "#0c1a2c", tabBg: "#12243e", tabText: "#6f86a8", tabActiveBg: "#1a2a4c", tabActiveText: "#e0ecfa",
+      aiBg: "#0c1a2c", aiText: "#dceefa", aiTabText: "#6f86a8",
+      userBubbleBg: "#2a4070", userBubbleText: "#eef8ff",
+      aiBubbleBg: "#1a2a4c", aiBubbleText: "#dceefa", aiBubbleBorder: "#2a4070",
+      systemBubbleBg: "#3d3420", systemBubbleText: "#e8d9a0",
+      inputBg: "#1a2a4c", inputText: "#dceefa", inputBorder: "#3d5a88",
+      accent: "#7fc0f0", accentText: "#0a1a30",
+      border: "#1a2a4c",
+      chipBg: "#1a2a4c", chipText: "#bcd8f0", chipBorder: "#3d5a88",
+    },
+  },
+  mascot: { light: imgEula, dark: imgEula },
+};
+
+export const BUILTIN_SKINS: SkinDefinition[] = [whaleCloud, whaleMaid, whaleAds, furinaSkin, citlaliSkin, keqingSkin, kokomiSkin, ayakaSkin, yoimiyaSkin, shogunSkin, nahidaSkin, nilouSkin, colleiSkin, noelleSkin, barbaraSkin, amborSkin, yelanSkin, zibaiSkin, ganyuSkin, columbinaSkin, linneaSkin, escoffierSkin, naviaSkin, mualaniSkin, sandroneSkin, clorindeSkin, nicoleSkin, sucroseSkin, eulaSkin];
 
 // ───────────────────────── 自定义皮肤持久化 ─────────────────────────
 
