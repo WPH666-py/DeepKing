@@ -7,7 +7,7 @@ use std::sync::Arc;
 use crate::ai::context::{CompressedMessage, ContextCompressor};
 use crate::ai::deepseek::{DeepSeekClient, Message};
 use crate::ai::persona::{PersonaContext, TaskType, PromptAssembler, ContextFile};
-use crate::ai::tools::{ToolRegistry, ToolCall, ToolResult, ToolSchema, detect_runtimes};
+use crate::ai::tools::{ToolRegistry, ToolCall, ToolResult, ToolSchema, ToolFunction, SubagentExecutor, detect_runtimes};
 use crate::ai::undo::UndoStore;
 
 /// ─── Agent Loop 配置 ───
@@ -33,7 +33,8 @@ impl LoopConfig {
     pub fn for_mode(mode: &str) -> Self {
         match mode {
             "dsh" => Self {
-                max_iterations: 30,
+                // 0 = 不限步数：循环直到模型给出结论（不再调用工具）或出错
+                max_iterations: 0,
                 inject_read_before_edit_reminder: true,
                 inject_progress_reminder_every: None,
                 require_initial_scan: true,
@@ -41,7 +42,7 @@ impl LoopConfig {
                 require_thinking_prefix: false,
             },
             "dsk" => Self {
-                max_iterations: 20,
+                max_iterations: 0,
                 inject_read_before_edit_reminder: false,
                 inject_progress_reminder_every: Some(5),
                 require_initial_scan: false,
@@ -49,7 +50,7 @@ impl LoopConfig {
                 require_thinking_prefix: false,
             },
             "dsq" => Self {
-                max_iterations: 25,
+                max_iterations: 0,
                 inject_read_before_edit_reminder: false,
                 inject_progress_reminder_every: None,
                 require_initial_scan: false,
@@ -57,7 +58,7 @@ impl LoopConfig {
                 require_thinking_prefix: false,
             },
             "dsg" => Self {
-                max_iterations: 30,
+                max_iterations: 0,
                 inject_read_before_edit_reminder: false,
                 inject_progress_reminder_every: None,
                 require_initial_scan: false,
@@ -65,7 +66,7 @@ impl LoopConfig {
                 require_thinking_prefix: false,
             },
             _ => Self {
-                max_iterations: 20,
+                max_iterations: 0,
                 inject_read_before_edit_reminder: false,
                 inject_progress_reminder_every: None,
                 require_initial_scan: false,
@@ -91,8 +92,8 @@ pub enum AgentEventKind {
     ToolCallExecuted { id: String, name: String, success: bool, output: String },
     /// 迭代计数
     Iteration { current: usize, max: usize },
-    /// 循环结束
-    Done { content: String, total_iterations: usize, total_tool_calls: usize },
+    /// 循环结束（reasoning_content 供前端保存，thinking 模式回传必需）
+    Done { content: String, total_iterations: usize, total_tool_calls: usize, reasoning_content: Option<String> },
     /// 错误
     Error { message: String },
     /// 文件系统变化（write/edit/delete 等成功后触发，前端应刷新文件树）
@@ -133,6 +134,8 @@ pub struct AgentLoopInput {
     pub run_id: String,
     /// 撤销日志存储
     pub undo_store: Arc<UndoStore>,
+    /// 可选：覆盖步数上限（子智能体用；None = 使用 persona 默认 = 0 不限）
+    pub max_iterations_override: Option<usize>,
 }
 
 pub struct AgentLoopOutput {
@@ -157,8 +160,12 @@ pub async fn run_agent_loop<F>(
 where
     F: FnMut(AgentEvent) + Send,
 {
-    let config = LoopConfig::for_mode(&input.mode);
-    let tools = ToolRegistry::new_with_undo(input.working_dir.clone(), input.run_id.clone(), input.undo_store.clone());
+    let mut config = LoopConfig::for_mode(&input.mode);
+    if let Some(m) = input.max_iterations_override {
+        config.max_iterations = m;
+    }
+    let tools = ToolRegistry::new_with_undo(input.working_dir.clone(), input.run_id.clone(), input.undo_store.clone())
+        .with_subagent_executor(make_subagent_executor(&input));
     let tool_schemas: Vec<ToolSchema> = ToolRegistry::schemas();
 
     // 记录执行前已存在的临时脚本，避免误删用户文件
@@ -217,6 +224,7 @@ where
                 tool_calls: None,
                 tool_call_id: None,
                 name: None,
+                reasoning_content: None,
                 r#type: cm.role.clone(),
             }).collect();
             compressed = true;
@@ -238,6 +246,7 @@ where
         tool_calls: None,
         tool_call_id: None,
         name: None,
+        reasoning_content: None,
         r#type: "user".into(),
     });
     // 历史消息也加进去（如果 history 非空）
@@ -253,9 +262,14 @@ where
 
     let mut final_content = String::new();
     let mut total_tool_calls = 0;
+    let mut last_reasoning: Option<String> = None;
 
-    // 3. 主循环
-    for iter in 0..config.max_iterations {
+    // 3. 主循环（max_iterations = 0 表示不限步数：直到模型给出结论或出错才结束）
+    let mut iter: usize = 0;
+    loop {
+        if config.max_iterations > 0 && iter >= config.max_iterations {
+            break;
+        }
         emit(
             AgentEvent::new(AgentEventKind::Iteration {
                 current: iter + 1,
@@ -273,6 +287,7 @@ where
                 tool_calls: None,
                 tool_call_id: None,
                 name: None,
+                reasoning_content: None,
                 r#type: "user".into(),
             });
         }
@@ -293,6 +308,7 @@ where
                     tool_calls: None,
                     tool_call_id: None,
                     name: None,
+                    reasoning_content: None,
                     r#type: "user".into(),
                 });
             }
@@ -329,9 +345,19 @@ where
 
         let assistant_msg = &choice.message;
         final_content = assistant_msg.content.clone();
+        last_reasoning = assistant_msg.reasoning_content.clone();
 
-        // 推送助手文本
-        if !assistant_msg.content.is_empty() {
+        // DSML 双源检测：DeepSeek 推理模型会把工具调用写成 content 或 reasoning_content 里的 DSML 文本
+        let dsml_source = format!(
+            "{}{}",
+            assistant_msg.content,
+            assistant_msg.reasoning_content.clone().unwrap_or_default()
+        );
+        let dsml_calls = parse_dsml_tool_calls(&dsml_source);
+        let has_dsml = !dsml_calls.is_empty();
+
+        // 推送助手文本（DSML 属于工具调用文本，不直接展示）
+        if !assistant_msg.content.is_empty() && !has_dsml {
             let ev = AgentEvent::new(AgentEventKind::AssistantText {
                 content: assistant_msg.content.clone(),
             });
@@ -339,13 +365,19 @@ where
             on_event(ev);
         }
 
-        // 检查是否需要工具调用
-        let tool_calls = assistant_msg.tool_calls.clone().unwrap_or_default();
+        // 工具调用：结构化优先；为空时用 DSML 解析结果
+        let mut tool_calls = assistant_msg.tool_calls.clone().unwrap_or_default();
 
-        // 把助手消息加入历史，确保 type 字段非空
-        let mut assistant_msg = assistant_msg.clone();
-        if assistant_msg.r#type.is_empty() { assistant_msg.r#type = assistant_msg.role.clone(); }
-        messages.push(assistant_msg);
+        // 把助手消息加入历史，确保 type 字段非空；
+        // DSML 调用改写为规范 tool_calls 形态，保证后续请求的 tool→tool_calls 链完整
+        let mut captured_assistant = assistant_msg.clone();
+        if captured_assistant.r#type.is_empty() { captured_assistant.r#type = captured_assistant.role.clone(); }
+        if tool_calls.is_empty() && has_dsml {
+            tool_calls = dsml_calls;
+            captured_assistant.content.clear();
+            captured_assistant.tool_calls = Some(tool_calls.clone());
+        }
+        messages.push(captured_assistant);
         if tool_calls.is_empty() {
             // 没有工具调用 = 任务完成
             cleanup_temp_py_files(&input.working_dir, &existing_temp_files);
@@ -353,6 +385,7 @@ where
                 content: final_content.clone(),
                 total_iterations: iter + 1,
                 total_tool_calls,
+                reasoning_content: last_reasoning.clone(),
             });
             events.push(ev.clone());
             on_event(ev);
@@ -446,14 +479,16 @@ where
                 &result,
             ));
         }
+        iter += 1;
     }
 
-    // 达到最大迭代
+    // 达到最大迭代（设置过步数上限时才可能走到这里）
     cleanup_temp_py_files(&input.working_dir, &existing_temp_files);
     let ev = AgentEvent::new(AgentEventKind::Done {
         content: final_content.clone(),
         total_iterations: config.max_iterations,
         total_tool_calls,
+        reasoning_content: last_reasoning.clone(),
     });
     events.push(ev.clone());
     on_event(ev);
@@ -479,10 +514,9 @@ fn persona_loop_directives(mode: &str, cfg: &LoopConfig) -> String {
 
     // 通用规则（所有 persona 适用）
     s.push_str("### Universal rules (apply to all personas)\n");
-    s.push_str("- **Chunk long writes**: Any single `write` call's `content` MUST be <= 2000 characters. For longer files:\n");
-    s.push_str("  1. First call `write` with the first chunk (creates the file).\n");
-    s.push_str("  2. Then call `edit` with `old_string` set to the LAST ~10 lines of the previous chunk (must match exactly) and `new_string` set to those same lines + the next chunk appended.\n");
-    s.push_str("  3. Repeat `edit` until the file is complete.\n");
+    s.push_str("- **Whole-file writes**: A single `write` call may carry the ENTIRE file content (up to ~60000 characters). Prefer one `write` per file instead of chunking.\n");
+    s.push_str("- **Batch tools (efficiency)**: For multi-file changes, use ONE `batch_write`/`batch_edit` call instead of many separate write/edit calls.\n");
+    s.push_str("- **Sub-agents (parallelism)**: Delegate independent subtasks (e.g. separate modules/files) to `subagents` — 1-4 sub-agents run in parallel with full tool access and return their own conclusions. This cuts total wall-clock and main-loop steps.\n");
     s.push_str("- **Chunk long bash commands**: If a `bash` command string is long, split it across multiple bash calls.\n");
     s.push_str("- **Tool result truncation**: If a tool returns a long output, you can use `read` with `offset`/`limit` or `grep` to inspect specific parts instead of dumping the whole thing again.\n");
     s.push_str("\n");
@@ -606,6 +640,7 @@ fn tool_result_message(id: &str, name: &str, result: &ToolResult) -> Message {
         tool_calls: None,
         tool_call_id: Some(id.to_string()),
         name: Some(name.to_string()),
+        reasoning_content: None,
         r#type: "tool".into(),
     }
 }
@@ -651,5 +686,166 @@ fn cleanup_temp_py_files(dir: &Path, existing: &HashSet<PathBuf>) {
                 }
             }
         }
+    }
+}
+
+// ════════════════════════════════════════════════════════
+// DSML 文本工具调用解析（DeepSeek 推理模型把调用写成
+// <｜DSML｜tool_calls> 形式的纯文本，位于 content 或 reasoning_content）
+// ════════════════════════════════════════════════════════
+
+/// 真实标签为 `<｜DSML｜tag>`（｜ = U+FF5C），归一化去掉「｜DSML｜」后即为标准 XML 形状
+fn parse_dsml_tool_calls(text: &str) -> Vec<ToolCall> {
+    let mut calls: Vec<ToolCall> = Vec::new();
+    if text.is_empty() {
+        return calls;
+    }
+    let normalized = text.replace("\u{FF5C}DSML\u{FF5C}", "");
+    let mut rest = normalized.as_str();
+    while let Some(open) = rest.find("<tool_calls>") {
+        let after_open = &rest[open + "<tool_calls>".len()..];
+        let Some(close) = after_open.find("</tool_calls>") else {
+            break;
+        };
+        let block = &after_open[..close];
+        rest = &after_open[close + "</tool_calls>".len()..];
+
+        let mut b = block;
+        while let Some(inv_pos) = b.find("<invoke") {
+            let inv_after = &b[inv_pos..];
+            let Some(inv_close) = inv_after.find("</invoke>") else {
+                break;
+            };
+            let inv = &inv_after[..inv_close + "</invoke>".len()];
+            b = &inv_after[inv_close + "</invoke>".len()..];
+
+            let Some(name) = dsml_attribute(inv, "name") else {
+                continue;
+            };
+            let mut args = serde_json::Map::new();
+            let mut p = inv;
+            while let Some(param_pos) = p.find("<parameter") {
+                let param_after = &p[param_pos..];
+                let Some(param_close) = param_after.find("</parameter>") else {
+                    break;
+                };
+                let param = &param_after[..param_close + "</parameter>".len()];
+                p = &param_after[param_close + "</parameter>".len()..];
+                let Some(pname) = dsml_attribute(param, "name") else {
+                    continue;
+                };
+                let is_str = param.contains("string=\"true\"");
+                let value = dsml_param_body(param);
+                let v = if is_str {
+                    Value::String(value)
+                } else {
+                    serde_json::from_str::<Value>(&value).unwrap_or(Value::String(value))
+                };
+                args.insert(pname, v);
+            }
+            calls.push(ToolCall {
+                id: format!("dsml_{}", calls.len()),
+                kind: "function".into(),
+                function: ToolFunction { name, arguments: Value::Object(args) },
+            });
+        }
+    }
+    calls
+}
+
+/// 从标签头提取 `attr="..."` 的值
+fn dsml_attribute(tag: &str, attr: &str) -> Option<String> {
+    let needle = format!("{}=\"", attr);
+    let start = tag.find(&needle)? + needle.len();
+    let rest = &tag[start..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
+}
+
+/// 提取 `<parameter ...>BODY</parameter>` 的 BODY
+fn dsml_param_body(param: &str) -> String {
+    match param.find('>') {
+        Some(gt) => param[gt + 1..].trim_end_matches("</parameter>").to_string(),
+        None => String::new(),
+    }
+}
+
+// ════════════════════════════════════════════════════════
+// 子智能体执行器：把 subagents 工具的指令交给嵌套 Agent Loop
+// （独立上下文 + 全套工具，最多 40 轮；事件静默，结论回传主循环）
+// ════════════════════════════════════════════════════════
+
+fn make_subagent_executor(input: &AgentLoopInput) -> SubagentExecutor {
+    let deepseek = input.deepseek.clone();
+    let persona_ctx = input.persona_ctx.clone();
+    let mode = input.mode.clone();
+    let working_dir = input.working_dir.clone();
+    let undo_store = input.undo_store.clone();
+    let run_id = input.run_id.clone();
+    Arc::new(move |instruction: String| -> futures_util::future::BoxFuture<'static, Result<String, String>> {
+        let deepseek = deepseek.clone();
+        let persona_ctx = persona_ctx.clone();
+        let mode = mode.clone();
+        let working_dir = working_dir.clone();
+        let undo_store = undo_store.clone();
+        let run_id = run_id.clone();
+        Box::pin(async move {
+            let sub_input = AgentLoopInput {
+                mode,
+                user_message: instruction,
+                history: Vec::new(),
+                context_paths: Vec::new(),
+                working_dir,
+                deepseek,
+                persona_ctx,
+                // 子智能体的文件变更记入主 run 的撤销日志（撤回对话时一并回滚）
+                run_id,
+                undo_store,
+                // 子智能体带步数上限，避免嵌套任务失控
+                max_iterations_override: Some(40),
+            };
+            let output = run_agent_loop(sub_input, |_| {}).await;
+            match output {
+                Ok(o) => Ok(o.final_content),
+                Err(e) => Err(e),
+            }
+        })
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn dsml_parse_content_and_reasoning() {
+        // 真实 DSML 格式：<｜DSML｜tool_calls>（｜ = U+FF5C），带字符串/非字符串参数
+        let text = "<\u{FF5C}DSML\u{FF5C}tool_calls>\n\
+                    <\u{FF5C}DSML\u{FF5C}invoke name=\"read\">\n\
+                    <\u{FF5C}DSML\u{FF5C}parameter name=\"file_path\" string=\"true\">d:\\a\\b.js</\u{FF5C}DSML\u{FF5C}parameter>\n\
+                    <\u{FF5C}DSML\u{FF5C}parameter name=\"offset\" string=\"false\">340</\u{FF5C}DSML\u{FF5C}parameter>\n\
+                    <\u{FF5C}DSML\u{FF5C}parameter name=\"limit\" string=\"false\">135</\u{FF5C}DSML\u{FF5C}parameter>\n\
+                    </\u{FF5C}DSML\u{FF5C}invoke>\n\
+                    </\u{FF5C}DSML\u{FF5C}tool_calls>";
+        let calls = parse_dsml_tool_calls(text);
+        assert_eq!(calls.len(), 1, "应解析出 1 个调用");
+        assert_eq!(calls[0].function.name, "read");
+        assert_eq!(calls[0].function.arguments["file_path"], json!("d:\\a\\b.js"));
+        assert_eq!(calls[0].function.arguments["offset"], json!(340));
+        assert_eq!(calls[0].function.arguments["limit"], json!(135));
+    }
+
+    #[test]
+    fn dsml_parse_empty_and_garbage() {
+        assert!(parse_dsml_tool_calls("").is_empty());
+        assert!(parse_dsml_tool_calls("plain text no markup").is_empty());
+        // 非法 JSON 参数值 → 回退为字符串
+        let text = "<\u{FF5C}DSML\u{FF5C}tool_calls><\u{FF5C}DSML\u{FF5C}invoke name=\"write\">\
+                    <\u{FF5C}DSML\u{FF5C}parameter name=\"content\" string=\"false\">{not json</\u{FF5C}DSML\u{FF5C}parameter>\
+                    </\u{FF5C}DSML\u{FF5C}invoke></\u{FF5C}DSML\u{FF5C}tool_calls>";
+        let calls = parse_dsml_tool_calls(text);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].function.arguments["content"], json!("{not json"));
     }
 }

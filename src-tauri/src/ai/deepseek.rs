@@ -48,9 +48,19 @@ pub struct Message {
     /// 工具结果消息的 name
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// thinking 模式（deepseek-v4-pro 等）要求：assistant 消息的 reasoning_content
+    /// 必须随后续请求回传，否则 API 返回 400 "The reasoning_content in the thinking mode must be passed back"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
     /// 消息类型（DeepSeek v4 要求，必须存在）
     #[serde(default)]
     pub r#type: String,
+}
+
+/// API Key 必须是纯 ASCII 无空白字符串；粘贴时常混入全角/不换行空格、换行或中文，
+/// 非 ASCII 字符会导致 HTTP 头解析失败（reqwest）或 DeepSeek 侧异常
+fn clean_api_key(k: &str) -> String {
+    k.chars().filter(|c| ('!'..='~').contains(c)).collect()
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -166,7 +176,7 @@ impl DeepSeekClient {
 
     pub fn with_config(api_key: String, base_url: Option<String>, model: Option<String>) -> Self {
         let config = DeepSeekConfig {
-            api_key,
+            api_key: clean_api_key(&api_key),
             base_url: base_url.unwrap_or_else(|| "https://api.deepseek.com".to_string()),
             model: model.unwrap_or_else(|| "deepseek-chat".to_string()),
         };
@@ -181,15 +191,15 @@ impl DeepSeekClient {
     /// 更新配置
     pub async fn set_config(&self, api_key: String, base_url: Option<String>, model: Option<String>) {
         let mut cfg = self.config.lock().await;
-        cfg.api_key = api_key;
+        cfg.api_key = clean_api_key(&api_key);
         if let Some(url) = base_url { cfg.base_url = url; }
         if let Some(m) = model { cfg.model = m; }
     }
 
-    /// 检查是否已配置 API Key
+    /// 检查是否已配置 API Key（清洗后非空才算）
     pub async fn is_configured(&self) -> bool {
         let cfg = self.config.lock().await;
-        !cfg.api_key.is_empty()
+        !clean_api_key(&cfg.api_key).is_empty()
     }
 
     /// 唯一运行时 API 调用 — 发送组装后的 System Prompt + 对话历史
@@ -209,8 +219,9 @@ impl DeepSeekClient {
         tools: Option<&[ToolSchema]>,
     ) -> Result<ChatResponse, String> {
         let config = self.config.lock().await;
-        if config.api_key.is_empty() {
-            return Err("DeepSeek API Key not configured. Set it in Settings.".to_string());
+        let api_key = clean_api_key(&config.api_key);
+        if api_key.is_empty() {
+            return Err("API Key 无效：为空或仅含空白/非 ASCII 字符（可能粘贴了错误内容）。请清空后重新粘贴 sk- 开头的 DeepSeek API Key。".to_string());
         }
 
         let mut all_messages = vec![Message {
@@ -219,6 +230,7 @@ impl DeepSeekClient {
             tool_calls: None,
             tool_call_id: None,
             name: None,
+            reasoning_content: None,
             r#type: "system".into(),
         }];
         all_messages.extend_from_slice(messages);
@@ -238,7 +250,7 @@ impl DeepSeekClient {
         let resp = self
             .client
             .post(format!("{}/v1/chat/completions", config.base_url))
-            .header("Authorization", format!("Bearer {}", config.api_key))
+            .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
             .json(&req)
             .timeout(std::time::Duration::from_secs(300))
@@ -279,8 +291,9 @@ impl DeepSeekClient {
         on_token: impl Fn(String) + Send + 'static,
     ) -> Result<String, String> {
         let config = self.config.lock().await;
-        if config.api_key.is_empty() {
-            return Err("DeepSeek API Key not configured.".to_string());
+        let api_key = clean_api_key(&config.api_key);
+        if api_key.is_empty() {
+            return Err("API Key 无效：为空或仅含空白/非 ASCII 字符，请重新粘贴 sk- 开头的密钥。".to_string());
         }
 
         let mut all_messages = vec![Message {
@@ -289,6 +302,7 @@ impl DeepSeekClient {
             tool_calls: None,
             tool_call_id: None,
             name: None,
+            reasoning_content: None,
             r#type: "system".into(),
         }];
         all_messages.extend_from_slice(messages);
@@ -308,7 +322,7 @@ impl DeepSeekClient {
         let resp = self
             .client
             .post(format!("{}/v1/chat/completions", config.base_url))
-            .header("Authorization", format!("Bearer {}", config.api_key))
+            .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
             .json(&req)
             .timeout(std::time::Duration::from_secs(300))
@@ -361,14 +375,15 @@ impl DeepSeekClient {
     /// 简单健康检查
     pub async fn health_check(&self) -> Result<String, String> {
         let config = self.config.lock().await;
-        if config.api_key.is_empty() {
+        let api_key = clean_api_key(&config.api_key);
+        if api_key.is_empty() {
             return Err("API Key not configured".to_string());
         }
         let url = format!("{}/v1/models", config.base_url);
         match self
             .client
             .get(&url)
-            .header("Authorization", format!("Bearer {}", config.api_key))
+            .header("Authorization", format!("Bearer {}", api_key))
             .send()
             .await
         {

@@ -127,6 +127,7 @@ pub async fn send_ai_message(
             tool_calls: None,
             tool_call_id: None,
             name: None,
+            reasoning_content: None,
             r#type: cm.role.clone(),
         }).collect()
     } else {
@@ -149,13 +150,15 @@ pub async fn send_ai_message(
             tool_calls: None,
             tool_call_id: None,
             name: None,
+            reasoning_content: None,
             r#type: "assistant".into(),
         });
 
-    // 剥离 tool_calls 等内部字段，返回前端需要的 role + content + type
+    // 剥离 tool_calls 等内部字段，返回前端需要的 role + content + type（保留 reasoning_content 供 thinking 模式回传）
     let safe_message = serde_json::json!({
         "role": raw_message.role,
         "content": raw_message.content,
+        "reasoning_content": raw_message.reasoning_content,
         "type": raw_message.r#type,
     });
 
@@ -214,6 +217,7 @@ pub async fn send_ai_message_stream(
             tool_calls: None,
             tool_call_id: None,
             name: None,
+            reasoning_content: None,
             r#type: cm.role.clone(),
         }).collect()
     } else {
@@ -278,6 +282,7 @@ pub async fn send_ai_message_with_tools(
         persona_ctx,
         run_id: run_id.clone(),
         undo_store: Arc::new(undo_store.inner().clone()),
+        max_iterations_override: None,
     };
 
     // 事件转发到 Tauri：每个 agent 事件触发 ai-agent-event

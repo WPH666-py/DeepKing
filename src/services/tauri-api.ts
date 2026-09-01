@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 // ─── Types ───
-export interface Message { id?: string; role: string; content: string; type?: string; }
+export interface Message { id?: string; role: string; content: string; type?: string; reasoning_content?: string | null; }
 export interface AIResponse {
   message: Message;
   usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };

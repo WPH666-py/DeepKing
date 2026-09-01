@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
+use futures_util::future::BoxFuture;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -75,19 +76,31 @@ pub struct ToolFunctionSchema {
 
 /// ─── 工具注册表 ───
 
+/// 子智能体执行器：接收一条指令，返回嵌套 Agent Loop 的最终结论。
+/// 由 agent_loop 注入，工具本身不知道循环细节。
+pub type SubagentExecutor =
+    Arc<dyn Fn(String) -> BoxFuture<'static, Result<String, String>> + Send + Sync>;
+
 pub struct ToolRegistry {
     pub working_dir: PathBuf,
     /// 撤销日志去向（run_id + 存储）；为 None 时不记录
     undo_sink: Option<(String, Arc<UndoStore>)>,
+    /// 可选的子智能体执行器（None 时 subagents 工具报“不可用”）
+    subagent_executor: Option<SubagentExecutor>,
 }
 
 impl ToolRegistry {
     pub fn new(working_dir: PathBuf) -> Self {
-        Self { working_dir, undo_sink: None }
+        Self { working_dir, undo_sink: None, subagent_executor: None }
     }
 
     pub fn new_with_undo(working_dir: PathBuf, run_id: String, store: Arc<UndoStore>) -> Self {
-        Self { working_dir, undo_sink: Some((run_id, store)) }
+        Self { working_dir, undo_sink: Some((run_id, store)), subagent_executor: None }
+    }
+
+    pub fn with_subagent_executor(mut self, exec: SubagentExecutor) -> Self {
+        self.subagent_executor = Some(exec);
+        self
     }
 
     /// 记录"变更前状态"，供撤回对话时回滚
@@ -109,6 +122,9 @@ impl ToolRegistry {
             Self::read_schema(),
             Self::edit_schema(),
             Self::write_schema(),
+            Self::batch_write_schema(),
+            Self::batch_edit_schema(),
+            Self::subagents_schema(),
             Self::bash_schema(),
             Self::grep_schema(),
             Self::glob_schema(),
@@ -138,6 +154,9 @@ impl ToolRegistry {
             "read" => self.tool_read(&call.function.arguments),
             "edit" => self.tool_edit(&call.function.arguments),
             "write" => self.tool_write(&call.function.arguments),
+            "batch_write" => self.tool_batch_write(&call.function.arguments),
+            "batch_edit" => self.tool_batch_edit(&call.function.arguments),
+            "subagents" => self.tool_subagents(&call.function.arguments).await,
             "bash" => self.tool_bash(&call.function.arguments).await,
             "grep" => self.tool_grep(&call.function.arguments),
             "glob" => self.tool_glob(&call.function.arguments),
@@ -345,19 +364,227 @@ impl ToolRegistry {
                 name: "write",
                 description: concat!(
                     "Create or overwrite a file. Use for new files or full rewrites. For existing files, prefer edit. ",
-                    "IMPORTANT: For files longer than ~2000 characters of content, you MUST split into multiple write/edit calls. ",
-                    "Write the FIRST chunk with `write` (creates the file), then append subsequent chunks with `edit` (matching the last few lines of the previous chunk as `old_string`). ",
-                    "Each `content` argument should be <= 2000 characters to avoid response truncation."
+                    "A single call may carry the ENTIRE file content (up to ~60000 characters). ",
+                    "For multi-file changes, prefer the batch_write/batch_edit tools."
                 ),
                 parameters: json!({
                     "type": "object",
                     "properties": {
                         "file_path": { "type": "string" },
-                        "content": { "type": "string", "description": "File content. MUST be <= 2000 chars. For longer files, use multiple write/edit calls." }
+                        "content": { "type": "string", "description": "File content (the whole file; up to ~60000 chars)" }
                     },
                     "required": ["file_path", "content"]
                 }),
             },
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
+    // 批量写/批量改 —— 一次调用处理多个文件，显著减少 agent 步数
+    // ════════════════════════════════════════════════════════
+    fn tool_batch_write(&self, args: &Value) -> ToolResult {
+        let files = args.get("files").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+        if files.is_empty() {
+            return ToolResult { success: false, output: "files is required: [{file_path, content}]".into(), data: None };
+        }
+        let mut report = Vec::new();
+        let mut ok = 0usize;
+        for f in &files {
+            let file_path = f.get("file_path").and_then(|v| v.as_str()).unwrap_or("");
+            let content = f.get("content").and_then(|v| v.as_str()).unwrap_or("");
+            if file_path.is_empty() {
+                report.push("❌ file_path is empty".to_string());
+                continue;
+            }
+            let full = self.resolve_path(file_path);
+            if let Some(parent) = full.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            self.record_undo(&full);
+            match std::fs::write(&full, content) {
+                Ok(_) => { ok += 1; report.push(format!("✅ {} ({} chars)", file_path, content.len())); }
+                Err(e) => report.push(format!("❌ {}: {}", file_path, e)),
+            }
+        }
+        ToolResult {
+            success: ok == files.len(),
+            output: format!("Batch write {}/{}\n{}", ok, files.len(), report.join("\n")),
+            data: Some(json!({"written": ok})),
+        }
+    }
+
+    fn tool_batch_edit(&self, args: &Value) -> ToolResult {
+        let edits = args.get("edits").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+        if edits.is_empty() {
+            return ToolResult { success: false, output: "edits is required: [{file_path, old_string, new_string}]".into(), data: None };
+        }
+        let mut report = Vec::new();
+        let mut ok = 0usize;
+        for e in &edits {
+            let file_path = e.get("file_path").and_then(|v| v.as_str()).unwrap_or("");
+            let old_string = e.get("old_string").and_then(|v| v.as_str()).unwrap_or("");
+            let new_string = e.get("new_string").and_then(|v| v.as_str()).unwrap_or("");
+            let replace_all = e.get("replace_all").and_then(|v| v.as_bool()).unwrap_or(false);
+            if file_path.is_empty() || old_string.is_empty() {
+                report.push(format!("❌ {}: file_path and old_string are required", file_path));
+                continue;
+            }
+            let full = self.resolve_path(file_path);
+            let content = match std::fs::read_to_string(&full) {
+                Ok(c) => c,
+                Err(err) => { report.push(format!("❌ {}: {}", file_path, err)); continue; }
+            };
+            if !content.contains(old_string) {
+                report.push(format!("❌ {}: old_string not found (read the file first)", file_path));
+                continue;
+            }
+            let occurrences = content.matches(old_string).count();
+            if !replace_all && occurrences > 1 {
+                report.push(format!("❌ {}: old_string appears {} times — set replace_all=true", file_path, occurrences));
+                continue;
+            }
+            let new_content = if replace_all {
+                content.replace(old_string, new_string)
+            } else {
+                content.replacen(old_string, new_string, 1)
+            };
+            self.record_undo(&full);
+            match std::fs::write(&full, &new_content) {
+                Ok(_) => { ok += 1; report.push(format!("✅ {} ({} occurrence(s))", file_path, occurrences.min(1))); }
+                Err(err) => report.push(format!("❌ {}: {}", file_path, err)),
+            }
+        }
+        ToolResult {
+            success: ok == edits.len(),
+            output: format!("Batch edit {}/{}\n{}", ok, edits.len(), report.join("\n")),
+            data: Some(json!({"edited": ok})),
+        }
+    }
+
+    fn batch_write_schema() -> ToolSchema {
+        ToolSchema {
+            kind: "function",
+            function: ToolFunctionSchema {
+                name: "batch_write",
+                description: "Write MULTIPLE files in ONE call (array of {file_path, content}, each content up to ~60000 chars). Use for creating/overwriting several files at once.",
+                parameters: json!({
+                    "type": "object",
+                    "properties": {
+                        "files": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "file_path": { "type": "string" },
+                                    "content": { "type": "string" }
+                                },
+                                "required": ["file_path", "content"]
+                            }
+                        }
+                    },
+                    "required": ["files"]
+                }),
+            },
+        }
+    }
+
+    fn batch_edit_schema() -> ToolSchema {
+        ToolSchema {
+            kind: "function",
+            function: ToolFunctionSchema {
+                name: "batch_edit",
+                description: "Apply MULTIPLE exact-string edits ACROSS MULTIPLE FILES in ONE call (array of {file_path, old_string, new_string, replace_all}). Prefer this over many separate edit calls.",
+                parameters: json!({
+                    "type": "object",
+                    "properties": {
+                        "edits": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "file_path": { "type": "string" },
+                                    "old_string": { "type": "string" },
+                                    "new_string": { "type": "string" },
+                                    "replace_all": { "type": "boolean" }
+                                },
+                                "required": ["file_path", "old_string", "new_string"]
+                            }
+                        }
+                    },
+                    "required": ["edits"]
+                }),
+            },
+        }
+    }
+
+    fn subagents_schema() -> ToolSchema {
+        ToolSchema {
+            kind: "function",
+            function: ToolFunctionSchema {
+                name: "subagents",
+                description: concat!(
+                    "Run 1-4 INDEPENDENT sub-agent tasks IN PARALLEL. Each sub-agent has a fresh context and the full tool set ",
+                    "(read/edit/bash/grep/batch_edit...), runs up to 40 rounds, and returns its conclusion. ",
+                    "Use for parallel investigation/fixing of independent files or modules: ONE call replaces many sequential calls."
+                ),
+                parameters: json!({
+                    "type": "object",
+                    "properties": {
+                        "tasks": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 4,
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": { "type": "string" },
+                                    "instruction": { "type": "string" }
+                                },
+                                "required": ["id", "instruction"]
+                            }
+                        }
+                    },
+                    "required": ["tasks"]
+                }),
+            },
+        }
+    }
+
+    async fn tool_subagents(&self, args: &Value) -> ToolResult {
+        let tasks: Vec<(String, String)> = args
+            .get("tasks")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|t| {
+                        let id = t.get("id").and_then(|v| v.as_str()).unwrap_or("task").to_string();
+                        let instr = t.get("instruction").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        if instr.is_empty() { None } else { Some((id, instr)) }
+                    })
+                    .take(4)
+                    .collect()
+            })
+            .unwrap_or_default();
+        if tasks.is_empty() {
+            return ToolResult { success: false, output: "tasks is required: [{id, instruction}] (max 4)".into(), data: None };
+        }
+        let Some(exec) = &self.subagent_executor else {
+            return ToolResult { success: false, output: "subagents is not available in this context".into(), data: None };
+        };
+        let futures: Vec<_> = tasks.iter().map(|(_, instr)| exec(instr.clone())).collect();
+        let results = futures_util::future::join_all(futures).await;
+        let mut lines: Vec<String> = Vec::new();
+        let mut ok = 0usize;
+        for ((id, _), res) in tasks.iter().zip(results.iter()) {
+            match res {
+                Ok(content) => { ok += 1; lines.push(format!("## {}\n{}", id, if content.is_empty() { "（空结果）".into() } else { content.clone() })); }
+                Err(e) => lines.push(format!("## {}（出错）\nERROR: {}", id, e)),
+            }
+        }
+        ToolResult {
+            success: ok == tasks.len(),
+            output: format!("✅ Sub-agents finished {}/{}\n\n{}", ok, tasks.len(), lines.join("\n\n")),
+            data: Some(json!({"tasks": tasks.len()})),
         }
     }
 

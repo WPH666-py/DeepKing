@@ -51,6 +51,7 @@ pub async fn send_agent_message(
             tool_calls: None,
             tool_call_id: None,
             name: None,
+            reasoning_content: None,
             r#type: cm.role.clone(),
         }).collect()
     } else {
@@ -72,6 +73,7 @@ pub async fn send_agent_message(
             tool_calls: None,
             tool_call_id: None,
             name: None,
+            reasoning_content: None,
             r#type: "assistant".into(),
         });
 

@@ -171,7 +171,8 @@ export const useAppStore = defineStore("app", () => {
     let accumulatedText = "";
 
     function updateAssistantContent() {
-      messages.value[msgIndex].content = `🛠 [${agentIterations.value}/${agentMaxIterations.value} 步 | 已调 ${toolCalls.value.length} 个工具]\n\n${accumulatedText}`;
+      const maxI = agentMaxIterations.value || "∞";
+      messages.value[msgIndex].content = `🛠 [${agentIterations.value}/${maxI} 步 | 已调 ${toolCalls.value.length} 个工具]\n\n${accumulatedText}`;
     }
 
     // 非代码生成请求：要求 AI 把结果写成 Markdown 文件
@@ -244,6 +245,8 @@ export const useAppStore = defineStore("app", () => {
             addSystemMessage(`📦 上下文自动压缩：${before.toFixed(1)}k → ${after.toFixed(1)}k Tokens（历史过长，已保留最近对话）`);
           } else if (k.type === "done") {
             messages.value[msgIndex].content = accumulatedText || k.content;
+            // thinking 模式要求 reasoning_content 随历史回传 → 存入消息
+            if (k.reasoning_content) messages.value[msgIndex].reasoning_content = k.reasoning_content;
             armWatchdog(20000);
           } else if (k.type === "error") {
             messages.value[msgIndex].content = `❌ 错误: ${k.message}`;
