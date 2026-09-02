@@ -5,6 +5,7 @@ pub mod hooks;
 pub mod context;
 pub mod tools;
 pub mod agent_loop;
+pub mod workflow;
 pub mod file_parser;
 pub mod vision;
 pub mod undo;

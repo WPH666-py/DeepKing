@@ -13,14 +13,14 @@ DeepKing 是一款面向现代开发者打造的新一代多模态智能体集�
 
 DeepKing 的核心理念是「简洁架构 + 极致体验」。底层采用 Rust 与 Tauri 2 构建，前端使用 Vue 3 与 TypeScript，实现了接近原生的启动速度与极低的内存占用，同时规避了 Electron 类应用常见的体积臃肿与性能损耗。无论你是学生、独立开发者还是团队工程师，DeepKing 都能在一个窗口内完成从「新建项目 → 编辑代码 → 多模态 AI 辅助开发 → 运行调试 → 版本提交」的完整闭环。
 
-与上一代产品最大的区别在于两点：一是能力模型从「单一文本」升级为「多模态」——内置 DeepSeek-OCR 与 ModLens 两套视觉引擎，让纯文本大模型也能真正"看懂"图片、截图、设计稿与扫描文档；二是工作流从「五种模拟人格」收敛为「四种聚焦模式」——DSH、DSK、DSQ、DSG——它们分别对应 DeepSeek Harness、K3、Qwen3.8 与 glm5.3，其中后三种通过离线 Persona 注入实现，风格鲜明且切换成本极低。
+与上一代产品最大的区别在于两点：一是能力模型从「单一文本」升级为「多模态」——内置 DeepSeek-OCR 与 ModLens 两套视觉引擎，让纯文本大模型也能真正"看懂"图片、截图、设计稿与扫描文档；二是工作流从「五种模拟人格」收敛为「四种聚焦模式」——DSH、DSK、DSQ、DSG——其中 DSH 为 DeepSeek Harness 原生 Agent，DSK、DSQ、DSG 由 **Rust 移植的厂商原装工作流引擎**（kimi-code / qwen-code / GLM-5 官方开源仓库）驱动，与 DeepSeek 运行时强强结合，不是仅靠提示词模拟风格。
 
 ## 2. 核心特性
 
 - **跨平台桌面应用**：基于 Tauri 2，支持 Windows、macOS 与 Linux，Windows 端提供原生 NSIS 安装包。
 - **多标签代码编辑器**：内置 CodeMirror 编辑器，支持语法高亮、主题切换（经典纯白 / 护眼淡绿 / 深色专业）与多种编程语言。
 - **文件树与资源管理**：完整的文件树浏览，新建 / 重命名 / 删除 / 复制 / 剪切 / 粘贴，支持拖拽调整面板宽度。
-- **四模式 AI 助手**：DSH / DSK / DSQ / DSG 四种工作流，统一走 DeepSeek 大模型运行时，后三种通过离线 Persona 注入呈现不同开发风格。
+- **四模式 AI 助手**：DSH / DSK / DSQ / DSG 四种工作流，统一走 DeepSeek 大模型运行时；DSK / DSQ / DSG 由厂商原装工作流引擎（Rust 移植 kimi-code / qwen-code / GLM-5 官方源码）驱动。
 - **内置多模态视觉引擎**：集成 DeepSeek-OCR 与 ModLens，可识别含文字截图、UI 设计稿、图表、公式与扫描文档，并把视觉内容转译为结构化文本供模型推理。
 - **Agent Loop 工具调用**：提供 Claude Code / Cursor 风格的工具 Agent 循环，支持实时代码读写、命令行执行、依赖安装等自动化操作。
 - **多语言一键运行**：支持 Python、JavaScript、TypeScript、Java、Go、Rust、C、C++、C#、PHP、SQL、MATLAB、Shell 等多种语言文件的自动识别与运行。
@@ -33,20 +33,20 @@ DeepKing 的核心理念是「简洁架构 + 极致体验」。底层采用 Rust
 
 ## 3. 四模式架构
 
-DeepKing 只支持四种工作模式：**DSH、DSK、DSQ、DSG**，分别对应 DeepSeek Harness、K3、Qwen3.8 与 glm5.3。四条模式共享同一个 DeepSeek 运行时与多模态视觉栈，区别在于系统提示词的组成方式与风格取向：
+DeepKing 只支持四种工作模式：**DSH、DSK、DSQ、DSG**。四种模式共享同一个 DeepSeek 运行时与多模态视觉栈，**区别在于工作流引擎**：
 
-| 模式 | 对应模型 | 机制 | 风格取向 |
+| 模式 | 对应模型 | 原装工作流引擎 | 机制 |
 | --- | --- | --- | --- |
-| **DSH** | DeepSeek Harness | 原生工作流 | 稳健的 Agent 循环，架构先行、长任务可追踪 |
-| **DSK** | K3 | Persona 注入 | 高效反馈、快节奏开发、结果导向 |
-| **DSQ** | Qwen3.8 | Persona 注入 | 中文优化、多角色协作、代码补全顺手 |
-| **DSG** | glm5.3 | Persona 注入 | 长上下文全局视角、并行分析、结构化输出 |
+| **DSH** | DeepSeek Harness | DeepSeek Harness 原生 Agent | 稳健的 Agent 循环，架构先行、长任务可追踪 |
+| **DSK** | Kimi Code CLI | MoonshotAI/kimi-code（MIT） | 任务规划 → 工具执行 → 塔式审查修复 |
+| **DSQ** | Qwen Code | QwenLM/qwen-code（Apache-2.0） | 调研 → 设计+测试计划 → 实现 → 验证 → 自我审计 |
+| **DSG** | GLM-5.3 | zai-org/GLM-5（Apache-2.0） | 全局视角 → 工程化循环 → 关键思维终审 |
 
-设计思路：DSH 作为「主模式」，提供最依赖原生 Agent 循环的基准体验；而 K3、Qwen3.8 与 glm5.3 则不需要单独拉模型，仅通过本地离线 Persona 配置，在每次请求前动态改写 System Prompt 就能模拟对应模型的"性格"与工作风格。这样既保留了多风格体验，又把成本压到了最低。
+设计思路：DSH 作为「主模式」，提供最依赖原生 Agent 循环的基准体验；DSK、DSQ 与 DSG 不需要单独拉模型——它们的**编排算法移植自各厂商官方开源工作流源码**（MoonshotAI/kimi-code、QwenLM/qwen-code、zai-org/GLM-5），以 Rust 引擎的形式运行在 DeepSeek 运行时之上。原版源码（含 LICENSE 与 commit 锁定）随仓保存在 `vendor/` 目录，映射关系与算法说明见 `docs/WORKFLOW-ENGINES.md`。这样既保留了真正的"原装工作流"，又把成本压到最低——只消耗 DeepSeek Token。
 
 ## 4. Persona 注入机制
 
-Persona 注入（Persona Injection）是 DeepKing 的核心提示工程手段。DeepKing 实际只调用 DeepSeek 这一个真实大模型，但借助本地离线的 Persona 配置——每个模式对应一个目录，内含 `persona.toml` 及多份 Markdown 知识文件——在每次请求前动态组装 System Prompt。Prompt 组装器会按权重把「身份设定、编码风格、审查清单、架构思维、协作模式、任务工作流」等内容注入系统提示词，让同一个底层模型表现出截然不同的"性格"与工作风格。这种注入完全离线，不额外调用其他模型，只消耗 DeepSeek Token。
+Persona 注入（Persona Injection）是 DeepKing 的**风格层**手段；工作流的**编排层**由厂商原装引擎（见第 3 节）负责。Persona 注入实际只调用 DeepSeek 这一个真实大模型，但借助本地离线的 Persona 配置——每个模式对应一个目录，内含 `persona.toml` 及多份 Markdown 知识文件——在每次请求前动态组装 System Prompt。Prompt 组装器会按权重把「身份设定、编码风格、审查清单、架构思维、协作模式、任务工作流」等内容注入系统提示词，与引擎的编排规则共同决定最终行为。这种注入完全离线，不额外调用其他模型，只消耗 DeepSeek Token。
 
 Persona 配置目录遵循「一目录一模式」的约定，`PersonaLoader` 负责按模式加载 `persona.toml`、`system-prompt.md`、`coding-style.md`、`review-checklist.md` 以及各模式特有的知识文件，并做缓存与截断，避免上下文膨胀。`PromptAssembler` 进一步把「模式身份 + 编码风格 + 审查标准 + 特有能力 + 任务工作流 + 上下文文件 + 安全规则 + 行为特质」拼装为最终的 System Prompt，在保证安全的同时精准还原不同开发风格。
 
@@ -83,7 +83,7 @@ DeepKing 采用前后端分层架构。前端使用 Vue 3 + TypeScript + Vite �
 编辑器支持多标签切换、保存、另存为。文件树右键菜单提供新建文件、新建文件夹、重命名、复制路径、剪切、复制、粘贴、删除等操作，所有文件操作均限定在项目目录内，安全可控。
 
 ### 8.3 AI 助手与四模式
-AI 助手支持 DSH / DSK / DSQ / DSG 四种工作流，其中 DSK、DSQ、DSG 通过离线 Persona 注入模拟 K3、Qwen3.8、glm5.3 的开发风格，DSH 为原生 Harness 工作流。所有模式统一走 DeepSeek 运行时并共享多模态视觉栈，仅消耗 DeepSeek Token。
+AI 助手支持 DSH / DSK / DSQ / DSG 四种工作流：DSH 为 DeepSeek Harness 原生 Agent 循环；DSK 由 Kimi Code CLI 原装工作流引擎驱动（任务规划 → 工具执行 → 塔式审查修复）；DSQ 由 Qwen Code 原装工作流引擎驱动（调研 → 设计+测试计划 → 实现 → 验证 → 自我审计）；DSG 由 GLM-5 原装 Agentic Engineering 驱动（全局视角 → 工程化循环 → 关键思维终审）。所有模式统一走 DeepSeek 运行时并共享多模态视觉栈，仅消耗 DeepSeek Token。
 
 ### 8.4 多模态视觉问答
 用户可直接粘贴或上传图片进对话，DeepKing 自动调用 DeepSeek-OCR 或 ModLens 完成识别，把图片内容转译为结构化文本后交给模型推理。适用于报错截图分析、UI 设计稿还原、流程图文字提取、扫描文档识别等场景。

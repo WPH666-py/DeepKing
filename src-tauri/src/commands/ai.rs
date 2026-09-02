@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::ai::{
-    run_agent_loop, AgentEvent, AgentLoopInput, AgentLoopOutput,
+    AgentEvent, AgentLoopInput, AgentLoopOutput,
     ContextCompressor, CompressedMessage, ContextFile,
     DeepSeekClient, Message, PersonaLoader, PromptAssembler, TaskType,
     UndoStore, apply_undo,
@@ -29,6 +29,7 @@ pub fn list_ai_modes() -> Vec<serde_json::Value> {
     PersonaLoader::list_modes()
         .into_iter()
         .map(|(id, desc)| {
+            let (engine, upstream, license, mechanism) = PersonaLoader::engine_info(id);
             serde_json::json!({
                 "id": id,
                 "name": match id {
@@ -39,6 +40,10 @@ pub fn list_ai_modes() -> Vec<serde_json::Value> {
                     _ => id,
                 },
                 "desc": desc,
+                "engine": engine,
+                "upstream": upstream,
+                "license": license,
+                "mechanism": mechanism,
             })
         })
         .collect()
@@ -59,6 +64,7 @@ pub fn switch_ai_mode(
     );
 
     let preview: String = assembled.chars().take(500).collect();
+    let (engine, upstream, license, mechanism) = PersonaLoader::engine_info(&mode);
     Ok(serde_json::json!({
         "mode": mode,
         "name": persona_ctx.persona.meta.name,
@@ -69,6 +75,10 @@ pub fn switch_ai_mode(
         "architecture_first": persona_ctx.persona.characteristics.architecture_first,
         "best_for": persona_ctx.persona.tags.best_for,
         "system_prompt_preview": preview,
+        "engine": engine,
+        "upstream": upstream,
+        "license": license,
+        "mechanism": mechanism,
     }))
 }
 
@@ -283,11 +293,13 @@ pub async fn send_ai_message_with_tools(
         run_id: run_id.clone(),
         undo_store: Arc::new(undo_store.inner().clone()),
         max_iterations_override: None,
+        extra_preamble: None,
     };
 
     // 事件转发到 Tauri：每个 agent 事件触发 ai-agent-event
+    // 按模式分发到原装工作流引擎（dsh=原生循环；dsk/dsq/dsg=厂商引擎）
     let app_for_events = app.clone();
-    let output: AgentLoopOutput = run_agent_loop(input, move |event: AgentEvent| {
+    let output: AgentLoopOutput = crate::ai::workflow::run(input, move |event: AgentEvent| {
         // 转为 serde_json::Value 再 emit，避免复杂枚举序列化问题
         if let Ok(ev_value) = serde_json::to_value(&event) {
             let _ = app_for_events.emit("ai-agent-event", ev_value);

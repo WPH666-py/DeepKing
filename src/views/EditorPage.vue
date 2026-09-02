@@ -487,12 +487,12 @@
             <div style="margin-top:0.5rem;font-size:0.82rem;color:#666;line-height:1.6">
               <div style="margin-bottom:0.6rem">
                 <b style="color:#333">DSH</b> — DeepSeek Harness 原生 Agent 循环，架构先行，自主执行。适合长任务、工具调用。<br>
-                <b style="color:#333">DSK</b> — 模拟 K3，最小可用、快速迭代、结果导向。适合快速原型、功能开发。<br>
-                <b style="color:#333">DSQ</b> — 模拟 Qwen3.8，多角度协作，中文优化，Agent 中心。适合中文项目、多角色协作。<br>
-                <b style="color:#333">DSG</b> — 模拟 GLM5.3，全局视角，并行分析，长上下文理解。适合大代码库分析。
+                <b style="color:#333">DSK</b> — Kimi Code CLI 原装工作流引擎（MoonshotAI/kimi-code, MIT）：计划 → 执行 → 子智能体审查修复。适合快速原型、功能开发。<br>
+                <b style="color:#333">DSQ</b> — Qwen Code 原装工作流引擎（QwenLM/qwen-code, Apache-2.0）：Planning 计划模式 + Agent Team 并行协作。适合中文项目、多角色协作。<br>
+                <b style="color:#333">DSG</b> — GLM-5 原装工作流引擎（zai-org/GLM-5, Apache-2.0）：Skills 技能驱动的 Agentic Engineering，全局视角并行分析。适合大代码库分析。
               </div>
               <div style="font-size:0.78rem;color:#999">
-                DSH 为原生 Harness 工作流；DSK / DSQ / DSG 通过离线 Persona 注入模拟对应模型风格，均使用 DeepSeek V4 作为唯一运行时，只消耗 DeepSeek Token。
+                DSH 为原生 Harness 工作流；DSK / DSQ / DSG 由 Rust 移植的厂商原装工作流引擎驱动（原版源码见仓库 vendor/），与 DeepSeek V4 运行时强强结合，而非仅以 Persona 文字模拟。全部模式只消耗 DeepSeek Token。
               </div>
             </div>
           </div>
@@ -532,7 +532,7 @@
         </div>
         <div class="modal-body">
           <p style="font-size:0.78rem;color:#888;margin-bottom:0.8rem">
-            DeepKing 只有 DeepSeek V4 一个运行时模型。DSH 为原生 Harness 工作流，DSK / DSQ / DSG 通过离线 Persona 注入模拟不同模型风格，均走 DeepSeek Token。
+            DeepKing 只有 DeepSeek V4 一个运行时模型。DSH 为原生 Harness 工作流，DSK / DSQ / DSG 由厂商原装工作流引擎（kimi-code / qwen-code / GLM-5 移植）驱动，均走 DeepSeek Token。
           </p>
           <!-- 能力开关：工具 / 多模态 / max -->
           <div class="config-field" style="display:flex;flex-direction:column;gap:0.55rem">
@@ -800,9 +800,9 @@ const filePickerRoot = ref("");
 
 const modes = [
   { id: "dsh", name: "DSH", desc: "DeepSeek Harness 原生 Agent", tags: "自主·架构先行·长任务" },
-  { id: "dsk", name: "DSK", desc: "K3 快速迭代+重构", tags: "最小可用·快反馈·结果导向" },
-  { id: "dsq", name: "DSQ", desc: "Qwen3.8 协作思考", tags: "中文优化·Agent中心" },
-  { id: "dsg", name: "DSG", desc: "GLM5.3 全局分析", tags: "全局视角·并行审查" },
+  { id: "dsk", name: "DSK", desc: "Kimi Code CLI 原装工作流", tags: "计划·执行·子智能体审查" },
+  { id: "dsq", name: "DSQ", desc: "Qwen Code 原装工作流", tags: "Planning·Agent Team 并行" },
+  { id: "dsg", name: "DSG", desc: "GLM-5 Skills 原装工作流", tags: "技能驱动·全局并行分析" },
 ];
 
 // ─── 监听 ───

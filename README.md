@@ -11,7 +11,7 @@ DeepKing 是一款面向现代开发者打造的多模态智能体集成开发�
 ## 核心特性
 
 - **跨平台桌面应用**：基于 Tauri 2，支持 Windows / macOS / Linux，Windows 端提供 NSIS 安装包。
-- **四模式 AI 助手**：DSH / DSK / DSQ / DSG 四种工作流，统一走 DeepSeek 运行时，后三种通过离线 Persona 注入呈现不同风格。
+- **四模式 AI 助手**：DSH / DSK / DSQ / DSG 四种工作流，统一走 DeepSeek 运行时；DSK / DSQ / DSG 由 Rust 移植的**厂商原装工作流引擎**（kimi-code / qwen-code / GLM-5）驱动，而非仅风格模拟。
 - **内置多模态视觉引擎**：集成 DeepSeek-OCR 与 ModLens，让纯文本大模型也能"看懂"截图、设计稿、图表与扫描文档。
 - **界面皮肤系统**：内置三款鲸鱼娘主题皮肤（常规 / 女仆 / 广告），支持亮色 / 暗色随时切换，并可将 GitHub 仓库一键转换为自定义皮肤。
 - **多标签编辑器**：内置 CodeMirror 编辑器，支持语法高亮与主题切换（经典纯白 / 护眼淡绿 / 深色专业）。
@@ -24,14 +24,17 @@ DeepKing 是一款面向现代开发者打造的多模态智能体集成开发�
 
 ## 四种模式
 
-| 模式 | 对应模型 | 机制 | 风格取向 |
-| --- | --- | --- | --- |
-| **DSH** | DeepSeek Harness | 原生工作流 | 稳健 Agent 循环，架构先行、长任务可追踪 |
-| **DSK** | K3 | Persona 注入 | 高效反馈、快节奏开发、结果导向 |
-| **DSQ** | Qwen3.8 | Persona 注入 | 中文优化、多角色协作、代码补全顺手 |
-| **DSG** | glm5.3 | Persona 注入 | 长上下文全局视角、并行分析、结构化输出 |
+| 模式 | 对应模型 | 原装工作流引擎（Open Source 上游） | 许可证 | 机制 |
+| --- | --- | --- | --- | --- |
+| **DSH** | DeepSeek Harness | DeepSeek Harness 原生 Agent | MIT | 稳健 Agent 循环，架构先行、长任务可追踪 |
+| **DSK** | Kimi Code CLI | [MoonshotAI/kimi-code](https://github.com/MoonshotAI/kimi-code) | MIT | 任务规划 → 工具执行 → 塔式审查修复 |
+| **DSQ** | Qwen Code | [QwenLM/qwen-code](https://github.com/QwenLM/qwen-code) | Apache-2.0 | 调研 → 设计+测试计划 → 实现 → 验证 → 自我审计 |
+| **DSG** | GLM-5.3 | [zai-org/GLM-5](https://github.com/zai-org/GLM-5) | Apache-2.0 | 全局视角 → 工程化循环 → 关键思维终审 |
 
-四种模式共享同一个 DeepSeek 运行时与多模态视觉栈，区别在于 System Prompt 的组成方式与风格取向。DSH 提供原生 Agent 循环基准体验，DSK / DSQ / DSG 则通过本地离线 Persona 配置动态改写系统提示词，模拟对应模型的"性格"与工作风格，成本压到最低。
+四种模式共享同一个 DeepSeek V4 运行时与多模态视觉栈。DSH 是原生 Agent 循环基准；
+DSK / DSQ / DSG 的编排算法**移植自厂商官方开源工作流源码**（原版源码随仓保存在
+[`vendor/`](vendor/) 目录，含 LICENSE 与 commit 锁定），与 DeepSeek 代码强强结合 ——
+**不是仅靠 Persona 文字模拟风格**。详见 [`docs/WORKFLOW-ENGINES.md`](docs/WORKFLOW-ENGINES.md)。
 
 ## 多模态能力
 

@@ -136,6 +136,9 @@ pub struct AgentLoopInput {
     pub undo_store: Arc<UndoStore>,
     /// 可选：覆盖步数上限（子智能体用；None = 使用 persona 默认 = 0 不限）
     pub max_iterations_override: Option<usize>,
+    /// 可选：附加到 System Prompt 末尾的原装工作流编排内容
+    /// （厂商引擎的 plan / skill / 检查清单等，由 workflow 模块注入）
+    pub extra_preamble: Option<String>,
 }
 
 pub struct AgentLoopOutput {
@@ -202,6 +205,14 @@ where
 
     // 注入 persona 特有的循环规则
     system_prompt.push_str(&persona_loop_directives(&input.mode, &config));
+
+    // 注入厂商原装工作流编排内容（workflow 引擎的 plan / skill / 检查清单等）
+    if let Some(extra) = &input.extra_preamble {
+        if !extra.is_empty() {
+            system_prompt.push_str("\n\n");
+            system_prompt.push_str(extra);
+        }
+    }
 
     // 2. 初始化消息历史（历史超长时先做上下文自动压缩，只压缩发送前的历史，
     //    当前用户消息与工具结果配对必须原样保留）
@@ -803,6 +814,7 @@ fn make_subagent_executor(input: &AgentLoopInput) -> SubagentExecutor {
                 undo_store,
                 // 子智能体带步数上限，避免嵌套任务失控
                 max_iterations_override: Some(40),
+                extra_preamble: None,
             };
             let output = run_agent_loop(sub_input, |_| {}).await;
             match output {

@@ -18,7 +18,7 @@ export interface AgentLoopResult {
   context_tokens: number;
   compressed: boolean;
 }
-export interface ModeInfo { id: string; name: string; desc: string; provider: string; emulated_model: string; coding_style: string; review_rigor: string; architecture_first: boolean; best_for: string[]; system_prompt_preview: string; }
+export interface ModeInfo { id: string; name: string; desc: string; provider: string; emulated_model: string; coding_style: string; review_rigor: string; architecture_first: boolean; best_for: string[]; system_prompt_preview: string; engine?: string; upstream?: string; license?: string; mechanism?: string; }
 export interface AgentDef { name: string; description: string; system_prompt: string; allowed_tools: string[]; }
 export interface FileEntry { name: string; path: string; is_dir: boolean; size: number; children?: FileEntry[]; }
 export interface DirListResult { entries: FileEntry[]; path: string; }

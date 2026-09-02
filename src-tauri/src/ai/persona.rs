@@ -175,14 +175,24 @@ impl PersonaLoader {
         }
     }
 
-    /// 列出所有可用模式
+    /// 列出所有可用模式（含工作流引擎元信息）
     pub fn list_modes() -> Vec<(&'static str, &'static str)> {
         vec![
-            ("dsh", "DSH — DeepSeek Harness 原生 Agent 工作流"),
-            ("dsk", "DSK — K3 式高速迭代（Persona 注入）"),
-            ("dsq", "DSQ — Qwen3.8 式协作思考（Persona 注入）"),
-            ("dsg", "DSG — GLM5.3 式全局分析（Persona 注入）"),
+            ("dsh", "DSH — DeepSeek Harness 原生 Agent 工作流（DeepSeek 运行时）"),
+            ("dsk", "DSK — Kimi Code CLI 原装工作流引擎（MoonshotAI/kimi-code, MIT）"),
+            ("dsq", "DSQ — Qwen Code 原装工作流引擎（QwenLM/qwen-code, Apache-2.0）"),
+            ("dsg", "DSG — GLM-5 原装工作流引擎（zai-org/GLM-5, Apache-2.0）"),
         ]
+    }
+
+    /// 每个模式的厂商原装引擎元信息（前端展示 / 说明文档共用）
+    pub fn engine_info(mode: &str) -> (&'static str, &'static str, &'static str, &'static str) {
+        match mode {
+            "dsk" => ("Kimi Code CLI", "MoonshotAI/kimi-code", "MIT", "Next-Gen Agent：计划 → 工具执行 → 子智能体(Tower)审查修复，无步数上限"),
+            "dsq" => ("Qwen Code", "QwenLM/qwen-code", "Apache-2.0", "Planning 计划模式 + Agent Team 并行协作：先拆解计划，再并行执行"),
+            "dsg" => ("GLM-5", "zai-org/GLM-5", "Apache-2.0", "Skills 技能驱动 Agentic Engineering：全局上下文，构建 → 测试 → 审查 → 文档循环"),
+            _ => ("DeepSeek Harness", "deepseek-ai", "MIT", "原生 Agent Loop：架构先行、长任务可追踪、工具驱动自主执行"),
+        }
     }
 }
 
