@@ -679,7 +679,6 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-shell",
  "tokio",
- "toml 0.8.2",
  "zip",
 ]
 

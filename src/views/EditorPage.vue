@@ -492,7 +492,7 @@
                 <b style="color:#333">DSG</b> — GLM-5 原装工作流引擎（zai-org/GLM-5, Apache-2.0）：Skills 技能驱动的 Agentic Engineering，全局视角并行分析。适合大代码库分析。
               </div>
               <div style="font-size:0.78rem;color:#999">
-                DSH 为原生 Harness 工作流；DSK / DSQ / DSG 由 Rust 移植的厂商原装工作流引擎驱动（原版源码见仓库 vendor/），与 DeepSeek V4 运行时强强结合，而非仅以 Persona 文字模拟。全部模式只消耗 DeepSeek Token。
+                DSH 为原生 Harness 工作流；DSK / DSQ / DSG 由 Rust 移植的厂商原装工作流引擎驱动（原版源码见仓库 vendor/），与 DeepSeek V4 运行时强强结合（无 Persona 模拟层）。全部模式只消耗 DeepSeek Token。
               </div>
             </div>
           </div>

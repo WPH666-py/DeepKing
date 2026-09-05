@@ -2,7 +2,8 @@
 
 > 版本 0.2.0 · 2026-09-02
 >
-> DeepKing 的 DSH / DSK / DSQ / DSG 四种模式，不再只是"离线 Persona 注入模拟风格"：
+> DeepKing 的 DSH / DSK / DSQ / DSG 四种模式，**无 Persona 注入层**（`personas/`
+> 与 Persona 加载器已整体移除，不做风格模拟）：
 > DSK / DSQ / DSG 由 **Rust 移植的厂商原装工作流引擎**驱动，引擎与 DeepSeek 运行时
 > （`deepseek.rs` 客户端 + `agent_loop.rs` 核心循环 + `tools.rs` 工具注册表）**强强结合**，
 > 只消耗 DeepSeek Token。

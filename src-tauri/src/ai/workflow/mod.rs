@@ -202,7 +202,7 @@ pub fn clone_for_phase(input: &AgentLoopInput) -> AgentLoopInput {
         context_paths: input.context_paths.clone(),
         working_dir: input.working_dir.clone(),
         deepseek: input.deepseek.clone(),
-        persona_ctx: input.persona_ctx.clone(),
+        system_prompt: input.system_prompt.clone(),
         run_id: input.run_id.clone(),
         undo_store: input.undo_store.clone(),
         max_iterations_override: None,

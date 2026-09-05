@@ -44,11 +44,15 @@ DeepKing 只支持四种工作模式：**DSH、DSK、DSQ、DSG**。四种模式�
 
 设计思路：DSH 作为「主模式」，提供最依赖原生 Agent 循环的基准体验；DSK、DSQ 与 DSG 不需要单独拉模型——它们的**编排算法移植自各厂商官方开源工作流源码**（MoonshotAI/kimi-code、QwenLM/qwen-code、zai-org/GLM-5），以 Rust 引擎的形式运行在 DeepSeek 运行时之上。原版源码（含 LICENSE 与 commit 锁定）随仓保存在 `vendor/` 目录，映射关系与算法说明见 `docs/WORKFLOW-ENGINES.md`。这样既保留了真正的"原装工作流"，又把成本压到最低——只消耗 DeepSeek Token。
 
-## 4. Persona 注入机制
+## 4. 无 Persona 注入层（原装工作流引擎驱动）
 
-Persona 注入（Persona Injection）是 DeepKing 的**风格层**手段；工作流的**编排层**由厂商原装引擎（见第 3 节）负责。Persona 注入实际只调用 DeepSeek 这一个真实大模型，但借助本地离线的 Persona 配置——每个模式对应一个目录，内含 `persona.toml` 及多份 Markdown 知识文件——在每次请求前动态组装 System Prompt。Prompt 组装器会按权重把「身份设定、编码风格、审查清单、架构思维、协作模式、任务工作流」等内容注入系统提示词，与引擎的编排规则共同决定最终行为。这种注入完全离线，不额外调用其他模型，只消耗 DeepSeek Token。
+DeepKing **不加载任何 Persona 文件、不模拟任何"人格"**。四种模式的编排完全由 Rust 原装工作流引擎负责：
 
-Persona 配置目录遵循「一目录一模式」的约定，`PersonaLoader` 负责按模式加载 `persona.toml`、`system-prompt.md`、`coding-style.md`、`review-checklist.md` 以及各模式特有的知识文件，并做缓存与截断，避免上下文膨胀。`PromptAssembler` 进一步把「模式身份 + 编码风格 + 审查标准 + 特有能力 + 任务工作流 + 上下文文件 + 安全规则 + 行为特质」拼装为最终的 System Prompt，在保证安全的同时精准还原不同开发风格。
+- `src-tauri/src/ai/workflow/kimi.rs`（DSK）、`qwen.rs`（DSQ）、`glm.rs`（DSG）与原生 `agent_loop.rs`（DSH）各自在 `extra_preamble` / 阶段指令中注入**上游原装工作流内容**（kimi-code、qwen-code、GLM-5）；
+- 代码内置的"原生系统提示"（`src-tauri/src/ai/modes.rs`）只包含极简的模式身份说明、上下文文件内容块与通用安全规则——没有风格模拟、没有注释清单、没有按权重的知识注入；
+- 模式元数据（名称 / 引擎 / 上游仓库 / 许可证 / 机制）由 `modes.rs` 静态表提供，不再读取磁盘上的任何 persona.toml / Markdown 知识文件（`personas/` 目录已整体移除）。
+
+这是"原装工作流 + 单一 DeepSeek 运行时"的完整实现：引擎负责编排，DeepSeek 负责推理，只消耗 DeepSeek Token，其他厂商的模型与人格均不涉及。
 
 ## 5. 多模态能力
 

@@ -34,7 +34,8 @@ DeepKing 是一款面向现代开发者打造的多模态智能体集成开发�
 四种模式共享同一个 DeepSeek V4 运行时与多模态视觉栈。DSH 是原生 Agent 循环基准；
 DSK / DSQ / DSG 的编排算法**移植自厂商官方开源工作流源码**（原版源码随仓保存在
 [`vendor/`](vendor/) 目录，含 LICENSE 与 commit 锁定），与 DeepSeek 代码强强结合 ——
-**不是仅靠 Persona 文字模拟风格**。详见 [`docs/WORKFLOW-ENGINES.md`](docs/WORKFLOW-ENGINES.md)。
+**无 Persona 模拟层**：四种模式完全由 Rust 原装工作流引擎驱动（`personas/` 目录与
+Persona 加载器已移除）。详见 [`docs/WORKFLOW-ENGINES.md`](docs/WORKFLOW-ENGINES.md)。
 
 ## 多模态能力
 

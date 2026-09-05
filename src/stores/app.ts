@@ -21,9 +21,9 @@ export const useAppStore = defineStore("app", () => {
   const model = ref<string>("deepseek-chat");
   const editorTheme = ref<EditorTheme>((localStorage.getItem("editorTheme") as EditorTheme) || "classic");
 
-  // Persona 信息
-  const personaInfo = ref<ModeInfo | null>(null);
-  const personaLoading = ref(false);
+  // 模式信息（元数据 + 原生 System Prompt 预览；无 Persona 注入层）
+  const modeInfo = ref<ModeInfo | null>(null);
+  const modeInfoLoading = ref(false);
 
   // Agent 列表
   const agents = ref<AgentDef[]>([]);
@@ -80,13 +80,13 @@ export const useAppStore = defineStore("app", () => {
   // ─── AI 模式 ───
   async function switchMode(mode: string) {
     currentMode.value = mode;
-    personaLoading.value = true;
+    modeInfoLoading.value = true;
     try {
-      personaInfo.value = await tauriAPI.switchAIMode(mode);
+      modeInfo.value = await tauriAPI.switchAIMode(mode);
     } catch (e: any) {
       addSystemMessage(`模式切换失败: ${e}`);
     } finally {
-      personaLoading.value = false;
+      modeInfoLoading.value = false;
     }
   }
 
@@ -429,7 +429,7 @@ export const useAppStore = defineStore("app", () => {
   return {
     currentProject, currentMode, currentAgent,
     apiKey, baseUrl, model,
-    personaInfo, personaLoading, agents,
+    modeInfo, modeInfoLoading, agents,
     messages, isLoading, totalTokens, displayMessages, streamingContent, lastContextTokens,
     fileTree, fileTreePath, selectedFile,
     editorTheme,

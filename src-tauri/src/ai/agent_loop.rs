@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use crate::ai::context::{CompressedMessage, ContextCompressor};
 use crate::ai::deepseek::{DeepSeekClient, Message};
-use crate::ai::persona::{PersonaContext, TaskType, PromptAssembler, ContextFile};
 use crate::ai::tools::{ToolRegistry, ToolCall, ToolResult, ToolSchema, ToolFunction, SubagentExecutor, detect_runtimes};
 use crate::ai::undo::UndoStore;
 
@@ -129,7 +128,8 @@ pub struct AgentLoopInput {
     pub context_paths: Vec<String>,
     pub working_dir: PathBuf,
     pub deepseek: std::sync::Arc<DeepSeekClient>,
-    pub persona_ctx: PersonaContext,
+    /// 命令层组装好的原生 System Prompt（模式基础提示 + 上下文文件内容）
+    pub system_prompt: String,
     /// 本次运行的唯一 ID（撤回对话时按 run 回滚文件）
     pub run_id: String,
     /// 撤销日志存储
@@ -189,22 +189,12 @@ where
         &mut on_event,
     );
 
-    // 1. 组装 system prompt（预读所有上下文文件内容）
-    let context_files: Vec<ContextFile> = input.context_paths.iter()
-        .map(|p| {
-            let parsed = crate::ai::file_parser::parse_file(p);
-            ContextFile { path: p.clone(), content: Some(parsed.content) }
-        })
-        .collect();
+    // 1. 使用命令层组装好的原生 System Prompt（模式基础提示 + 上下文文件内容；
+    //    工作流编排内容由引擎经 extra_preamble 注入）
+    let mut system_prompt = input.system_prompt.clone();
 
-    let mut system_prompt = PromptAssembler::assemble(
-        &input.persona_ctx,
-        TaskType::CodeGeneration,
-        &context_files,
-    );
-
-    // 注入 persona 特有的循环规则
-    system_prompt.push_str(&persona_loop_directives(&input.mode, &config));
+    // 注入模式特有的引擎循环规则
+    system_prompt.push_str(&mode_loop_directives(&input.mode, &config));
 
     // 注入厂商原装工作流编排内容（workflow 引擎的 plan / skill / 检查清单等）
     if let Some(extra) = &input.extra_preamble {
@@ -519,12 +509,12 @@ where
 // 辅助函数
 // ════════════════════════════════════════════════════════
 
-fn persona_loop_directives(mode: &str, cfg: &LoopConfig) -> String {
+fn mode_loop_directives(mode: &str, cfg: &LoopConfig) -> String {
     let mut s = String::new();
-    s.push_str("\n\n## Agent Loop Directives (per persona)\n");
+    s.push_str("\n\n## Agent Loop Directives (per engine)\n");
 
-    // 通用规则（所有 persona 适用）
-    s.push_str("### Universal rules (apply to all personas)\n");
+    // 通用规则（所有引擎适用）
+    s.push_str("### Universal rules (apply to all engines)\n");
     s.push_str("- **Whole-file writes**: A single `write` call may carry the ENTIRE file content (up to ~60000 characters). Prefer one `write` per file instead of chunking.\n");
     s.push_str("- **Batch tools (efficiency)**: For multi-file changes, use ONE `batch_write`/`batch_edit` call instead of many separate write/edit calls.\n");
     s.push_str("- **Sub-agents (parallelism)**: Delegate independent subtasks (e.g. separate modules/files) to `subagents` — 1-4 sub-agents run in parallel with full tool access and return their own conclusions. This cuts total wall-clock and main-loop steps.\n");
@@ -545,7 +535,7 @@ fn persona_loop_directives(mode: &str, cfg: &LoopConfig) -> String {
 
     match mode {
         "dsh" => {
-            s.push_str("You are running in **DeepSeek Harness** style:\n");
+            s.push_str("You are running the **DSH** mode (DeepSeek Harness native agent loop):\n");
             s.push_str("- Work autonomously through the agent loop; favor tool calls over guesswork.\n");
             s.push_str("- For multi-step tasks, FIRST call `todo_write` to plan.\n");
             s.push_str("- For any build/test/run, use `bash`.\n");
@@ -555,21 +545,21 @@ fn persona_loop_directives(mode: &str, cfg: &LoopConfig) -> String {
             s.push_str("- If a tool call fails twice, switch approach and explain why.\n");
         }
         "dsk" => {
-            s.push_str("You are running in **K3 style**:\n");
+            s.push_str("You are running the **DSK** mode (Kimi K3 engine — kimi-code):\n");
             s.push_str("- Plan → Generate → Review → Refine.\n");
             s.push_str("- Before generating code, briefly state your plan in the response.\n");
             s.push_str("- Every 5 iterations you'll be asked to check progress against the goal.\n");
             s.push_str("- Prefer minimal, runnable iterations. Verify after each step.\n");
         }
         "dsq" => {
-            s.push_str("You are running in **Qwen3.8 style**:\n");
+            s.push_str("You are running the **DSQ** mode (Qwen Code engine — qwen-code):\n");
             s.push_str("- For any non-trivial task, FIRST call `todo_write` to break it into subtasks.\n");
             s.push_str("- Mark subtasks `in_progress` before starting, `completed` after finishing.\n");
             s.push_str("- Mirror the existing project style: read similar files first, then write consistent code.\n");
             s.push_str("- Prefer complete, runnable code blocks over partial snippets.\n");
         }
         "dsg" => {
-            s.push_str("You are running in **GLM5.3 style**:\n");
+            s.push_str("You are running the **DSG** mode (GLM-5 engine — GLM-5):\n");
             s.push_str("- For unfamiliar codebases, FIRST call `glob` + `grep` to build a mental map.\n");
             s.push_str("- Take a global view: check usages with `grep` before editing shared functions.\n");
             s.push_str("- Process large code in chunks: `read` with offset/limit, then synthesize.\n");
@@ -788,14 +778,14 @@ fn dsml_param_body(param: &str) -> String {
 
 fn make_subagent_executor(input: &AgentLoopInput) -> SubagentExecutor {
     let deepseek = input.deepseek.clone();
-    let persona_ctx = input.persona_ctx.clone();
+    let system_prompt = input.system_prompt.clone();
     let mode = input.mode.clone();
     let working_dir = input.working_dir.clone();
     let undo_store = input.undo_store.clone();
     let run_id = input.run_id.clone();
     Arc::new(move |instruction: String| -> futures_util::future::BoxFuture<'static, Result<String, String>> {
         let deepseek = deepseek.clone();
-        let persona_ctx = persona_ctx.clone();
+        let system_prompt = system_prompt.clone();
         let mode = mode.clone();
         let working_dir = working_dir.clone();
         let undo_store = undo_store.clone();
@@ -808,7 +798,7 @@ fn make_subagent_executor(input: &AgentLoopInput) -> SubagentExecutor {
                 context_paths: Vec::new(),
                 working_dir,
                 deepseek,
-                persona_ctx,
+                system_prompt,
                 // 子智能体的文件变更记入主 run 的撤销日志（撤回对话时一并回滚）
                 run_id,
                 undo_store,

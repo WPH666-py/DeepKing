@@ -5,8 +5,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::ai::{
     AgentEvent, AgentLoopInput, AgentLoopOutput,
+    build_system_prompt, native_system_prompt,
     ContextCompressor, CompressedMessage, ContextFile,
-    DeepSeekClient, Message, PersonaLoader, PromptAssembler, TaskType,
+    DeepSeekClient, Message, modes,
     UndoStore, apply_undo,
 };
 
@@ -26,10 +27,10 @@ fn new_run_id() -> String {
 /// 列出所有可用 AI 模式
 #[tauri::command]
 pub fn list_ai_modes() -> Vec<serde_json::Value> {
-    PersonaLoader::list_modes()
+    modes::list_modes()
         .into_iter()
         .map(|(id, desc)| {
-            let (engine, upstream, license, mechanism) = PersonaLoader::engine_info(id);
+            let (engine, upstream, license, mechanism) = modes::engine_info(id);
             serde_json::json!({
                 "id": id,
                 "name": match id {
@@ -49,36 +50,31 @@ pub fn list_ai_modes() -> Vec<serde_json::Value> {
         .collect()
 }
 
-/// 切换 AI 模式 → 加载对应 Persona，返回组装好的 System Prompt 预览
+/// 切换 AI 模式 → 返回模式元数据 + 原生 System Prompt 预览
+/// （无 Persona 文件加载：编排完全由 Rust 原装工作流引擎驱动）
 #[tauri::command]
-pub fn switch_ai_mode(
-    mode: String,
-    persona_loader: State<'_, PersonaLoader>,
-) -> Result<serde_json::Value, String> {
-    let persona_ctx = persona_loader.load(&mode)?;
+pub fn switch_ai_mode(mode: String) -> Result<serde_json::Value, String> {
+    let m = modes::meta(&mode)
+        .ok_or_else(|| format!("未知模式：{}（支持 dsh / dsk / dsq / dsg）", mode))?;
 
-    let assembled = PromptAssembler::assemble(
-        &persona_ctx,
-        TaskType::CodeGeneration,
-        &[],
-    );
+    let native = native_system_prompt(&mode);
+    let preview: String = native.chars().take(500).collect();
 
-    let preview: String = assembled.chars().take(500).collect();
-    let (engine, upstream, license, mechanism) = PersonaLoader::engine_info(&mode);
     Ok(serde_json::json!({
         "mode": mode,
-        "name": persona_ctx.persona.meta.name,
-        "provider": persona_ctx.persona.meta.provider,
-        "emulated_model": persona_ctx.persona.meta.emulated_model,
-        "coding_style": persona_ctx.persona.characteristics.coding_style,
-        "review_rigor": persona_ctx.persona.characteristics.review_rigor,
-        "architecture_first": persona_ctx.persona.characteristics.architecture_first,
-        "best_for": persona_ctx.persona.tags.best_for,
+        "name": m.name,
+        "provider": m.provider,
+        "emulated_model": m.emulated_model,
+        "coding_style": m.coding_style,
+        "review_rigor": m.review_rigor,
+        "architecture_first": m.architecture_first,
+        "best_for": m.best_for,
+        "desc": m.desc,
         "system_prompt_preview": preview,
-        "engine": engine,
-        "upstream": upstream,
-        "license": license,
-        "mechanism": mechanism,
+        "engine": m.engine,
+        "upstream": m.upstream,
+        "license": m.license,
+        "mechanism": m.mechanism,
     }))
 }
 
@@ -101,11 +97,8 @@ pub async fn send_ai_message(
     message: String,
     history: Vec<Message>,
     context_paths: Vec<String>,
-    persona_loader: State<'_, PersonaLoader>,
     ds_client: State<'_, DeepSeekClient>,
 ) -> Result<serde_json::Value, String> {
-    let persona_ctx = persona_loader.load(&mode)?;
-
     let context_files: Vec<ContextFile> = context_paths
         .iter()
         .map(|path| {
@@ -117,11 +110,7 @@ pub async fn send_ai_message(
         })
         .collect();
 
-    let system_prompt = PromptAssembler::assemble(
-        &persona_ctx,
-        TaskType::CodeGeneration,
-        &context_files,
-    );
+    let system_prompt = build_system_prompt(&mode, &context_files);
 
     let compressor = ContextCompressor::with_defaults();
     let compressed_messages: Vec<CompressedMessage> = history.iter().map(|m| CompressedMessage {
@@ -191,11 +180,8 @@ pub async fn send_ai_message_stream(
     message: String,
     history: Vec<Message>,
     context_paths: Vec<String>,
-    persona_loader: State<'_, PersonaLoader>,
     ds_client: State<'_, DeepSeekClient>,
 ) -> Result<serde_json::Value, String> {
-    let persona_ctx = persona_loader.load(&mode)?;
-
     let context_files: Vec<ContextFile> = context_paths
         .iter()
         .map(|path| {
@@ -207,11 +193,7 @@ pub async fn send_ai_message_stream(
         })
         .collect();
 
-    let system_prompt = PromptAssembler::assemble(
-        &persona_ctx,
-        TaskType::CodeGeneration,
-        &context_files,
-    );
+    let system_prompt = build_system_prompt(&mode, &context_files);
 
     let compressor = ContextCompressor::with_defaults();
     let compressed_messages: Vec<CompressedMessage> = history.iter().map(|m| CompressedMessage {
@@ -267,13 +249,23 @@ pub async fn send_ai_message_with_tools(
     history: Vec<Message>,
     context_paths: Vec<String>,
     working_dir: Option<String>,
-    persona_loader: State<'_, PersonaLoader>,
     ds_client: State<'_, DeepSeekClient>,
     undo_store: State<'_, UndoStore>,
 ) -> Result<serde_json::Value, String> {
-    let persona_ctx = persona_loader.load(&mode)?;
-
     let wd = PathBuf::from(working_dir.unwrap_or_else(|| ".".to_string()));
+
+    // 上下文文件（仅注入原生系统提示；原装工作流编排由引擎 extra_preamble 注入）
+    let context_files: Vec<ContextFile> = context_paths
+        .iter()
+        .map(|path| {
+            let parsed = crate::ai::file_parser::parse_file(path);
+            ContextFile {
+                path: path.clone(),
+                content: Some(parsed.content),
+            }
+        })
+        .collect();
+    let system_prompt = build_system_prompt(&mode, &context_files);
 
     // DeepSeekClient 本身可 Clone（内部 Arc 共享配置），这里 clone 一份独立的 owned 实例
     // 给 agent_loop 使用，避免 State 生命周期问题
@@ -289,7 +281,7 @@ pub async fn send_ai_message_with_tools(
         context_paths,
         working_dir: wd,
         deepseek: deepseek_arc,
-        persona_ctx,
+        system_prompt,
         run_id: run_id.clone(),
         undo_store: Arc::new(undo_store.inner().clone()),
         max_iterations_override: None,
